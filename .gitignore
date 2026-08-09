@@ -1,0 +1,14 @@
+# node
+node_modules/
+
+# runtime / logs
+logs/
+env/run/
+env/render/
+web/__pycache__/
+**/__pycache__/
+*.pyc
+
+# editor
+.vscode/
+.idea/
