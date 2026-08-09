@@ -215,6 +215,31 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/services":
             return self._json(200, services_status())
 
+        if path == "/api/charts":
+            charts = []
+            try:
+                for f in sorted(os.listdir(os.path.join(PROJ, "env", "charts"))):
+                    if f.endswith("-chart.json"):
+                        name = f[: -len("-chart.json")]
+                        with open(os.path.join(PROJ, "env", "charts", f)) as fh:
+                            c = json.load(fh)
+                        diffs = {
+                            k: len(v)
+                            for k, v in (c.get("notes") or {}).items()
+                            if isinstance(v, list)
+                        }
+                        scroll = c.get("scrollSpeed", {})
+                        charts.append({
+                            "name": name,
+                            "diffs": diffs,
+                            "scroll": scroll.get("base", 1.0) if isinstance(scroll, dict) else 1.0,
+                        })
+            except Exception as e:
+                charts = []
+                self._send(500, f"error: {e}", "text/plain")
+                return
+            return self._json(200, {"charts": charts})
+
         if path == "/healthz":
             return self._send(200, "ok", "text/plain")
 
