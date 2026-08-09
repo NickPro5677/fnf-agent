@@ -255,6 +255,16 @@
       </div>
     </div>
 
+    <div class="card controls" id="tokenCard" style="display:none">
+      <div class="row">
+        <label class="field">token (para controlar)
+          <input id="tokenInput" type="password" placeholder="FNF_WEB_TOKEN" autocomplete="off">
+        </label>
+        <button class="good" id="btnTokenSave" type="button">Guardar</button>
+        <button class="ghost" id="btnTokenClear" type="button">Quitar</button>
+      </div>
+    </div>
+
     <div class="card controls">
       <div class="row">
         <label class="field">canción
@@ -295,6 +305,17 @@
   const live = $("live");
   let busy = false;
   let actionBusy = false;
+  const TOKEN_KEY = "fnf_web_token";
+
+  function getToken() { return localStorage.getItem(TOKEN_KEY) || ""; }
+  function setToken(t) {
+    if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY);
+  }
+  function hdrs(token) {
+    const h = { "Content-Type": "application/json" };
+    if (token) h["X-Fnf-Token"] = token;
+    return h;
+  }
 
   function tickFrame() {
     if (busy) return;
@@ -350,6 +371,17 @@
     setPill("pOllama", !!svc.ollama, "ollama");
     setPill("pFrame", !!svc.frame, "frame");
 
+    const tokenCard = $("tokenCard");
+    if (st.auth === "on") {
+      tokenCard.style.display = "block";
+      if (!getToken()) {
+        $("notice").className = "hint";
+        $("notice").innerHTML = "El visor exige token — introdúcelo arriba para controlar.";
+      }
+    } else {
+      tokenCard.style.display = "none";
+    }
+
     const notice = $("notice");
     if (!online) {
       notice.className = "error";
@@ -373,11 +405,19 @@
   }
 
   async function post(url, body) {
+    const token = getToken();
     const r = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: hdrs(token),
       body: JSON.stringify(body || {}),
     });
+    if (r.status === 401) {
+      setToken("");
+      $("tokenWrap").style.display = "block";
+      $("notice").className = "error";
+      $("notice").textContent = "Token requerido — introdúcelo arriba";
+      return { ok: false, error: "token" };
+    }
     return r.json();
   }
 
@@ -445,6 +485,21 @@
       ? "Demo: " + song + " (sin IA, las notas pasarán solas)"
       : (res.error || "error demo");
   });
+
+  $("btnTokenSave").onclick = () => {
+    const t = $("tokenInput").value.trim();
+    if (!t) { $("notice").className = "error"; $("notice").textContent = "Token vacío"; return; }
+    setToken(t);
+    $("tokenInput").value = "";
+    $("notice").className = "ok";
+    $("notice").textContent = "Token guardado";
+  };
+  $("btnTokenClear").onclick = () => {
+    setToken("");
+    $("tokenInput").value = "";
+    $("notice").className = "hint";
+    $("notice").textContent = "Token eliminado";
+  };
 
   setInterval(tickFrame, 100);
   setInterval(async () => {

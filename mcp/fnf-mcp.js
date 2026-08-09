@@ -68,15 +68,16 @@ const server = new McpServer({
 // ---------- observe ----------
 server.tool(
   "observe",
-  "Devuelve el estado simbólico del juego: distancia de la flecha por carril (dist en px, -1 = sin flecha), combo, salud, canción, tiempo y lugar.",
+  "Devuelve el estado simbólico del juego: distancia de la flecha por carril (dist en ms, -1 = sin flecha), combo, salud, canción, tiempo y lugar.",
   { },
   async () => {
     try {
       const st = await engineCall({ cmd: "status" });
-      const frame = perceive();
+      // El motor ya devuelve "lanes" = distancia en ms por carril (rápido y exacto).
+      const lanes = st.lanes || {};
       return {
         content: [
-          { type: "text", text: JSON.stringify({ ...st, lanes: frame.lanes }) },
+          { type: "text", text: JSON.stringify({ ...st, _lanes: lanes, _perception: st.lanes && Object.keys(st.lanes).length ? "engine" : "perception" }) },
         ],
       };
     } catch (e) {
@@ -139,7 +140,7 @@ server.tool(
 // ---------- song.chart ----------
 server.tool(
   "song.chart",
-  "Lista las notas próximas del chart oficial de la canción (hasta `limit`). Formato: [tiempo_ms, carril 0-3].",
+  "Lista las notas próximas del chart oficial de la canción (hasta `limit`). Formato: [tiempo_ms, carril 0-3, longitud_sustain_ms].",
   { song: z.string(), diff: z.number().optional(), limit: z.number().optional() },
   async ({ song, diff = 2, limit = 10 }) => {
     try {
@@ -149,7 +150,7 @@ server.tool(
       }
       const chart = JSON.parse(fs.readFileSync(file, "utf8"));
       const diffKey = ["easy", "normal", "hard"][Math.min(diff, 2)];
-      const notes = (chart.notes?.[diffKey] || []).map((n) => [n.t, n.d % 4]);
+      const notes = (chart.notes?.[diffKey] || []).map((n) => [n.t, n.d % 4, n.l ?? 0]);
       return {
         content: [{ type: "text", text: JSON.stringify(notes.slice(0, limit)) }],
       };

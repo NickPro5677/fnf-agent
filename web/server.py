@@ -34,6 +34,7 @@ FRAME_FILE = os.path.join(RENDER_DIR, "latest.png")
 INDEX = os.path.join(ROOT, "index.html")
 PORT = int(os.environ.get("FNF_WEB_PORT", "8787"))
 HOST = os.environ.get("FNF_WEB_HOST", "0.0.0.0")
+TOKEN = os.environ.get("FNF_WEB_TOKEN", "") or ""  # si se define, exigimos X-Fnf-Token
 OLLAMA = os.environ.get("OLLAMA_HOST", "127.0.0.1:11434")
 if "://" not in OLLAMA:
     OLLAMA_URL = f"http://{OLLAMA}"
@@ -176,7 +177,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Fnf-Token")
             self.end_headers()
             self.wfile.write(body)
         except (BrokenPipeError, ConnectionResetError, OSError):
@@ -208,6 +209,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/status":
             st = engine_status()
             st["services"] = services_status()
+            st["auth"] = "on" if TOKEN else "off"
             return self._json(200, st)
 
         if path == "/api/services":
@@ -221,6 +223,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
+        # Autenticación: solo las rutas de control (no /frame ni GET).
+        def _authed():
+            if not TOKEN:
+                return True
+            got = self.headers.get("X-Fnf-Token") or self.headers.get("X-FNF-TOKEN") or ""
+            return got == TOKEN
+
+        if not _authed():
+            return self._json(401, {"ok": False, "error": "token inválido o ausente"})
+
         try:
             body = _read_json_body(self)
         except ValueError as e:

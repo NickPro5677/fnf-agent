@@ -1,14 +1,15 @@
 // ============================================================
 // fnf-agent/bot/bot_loop.js
-// Agente mínimo que JUEGA FNF usando el modelo fnf-agent de
-// Ollama y las herramientas del servidor MCP (fnf-mcp).
+// Agente que JUGA FNF usando el modelo fnf-agent de Ollama + MCP.
 //
-// Estrategia (por la latencia del teléfono, Ollama tarda varios
-// segundos por decisión): el agente mide la latencia, ajusta la
-// escala de tiempo para que la separacion entre notas quepa en
-// la decision, decide cada nota pendiente con UNA llamadilla y
-// usa las herramientas => tool("song.chart"), tool("observe"),
-// tool("input.press").
+// Estrategia HÍBRIDA:
+// 1. La LLM decide el carril viendo el estado OBSERVADO real (MCP
+//    devuelve dist por carril en ms). Prompt mínimo (Modelfile).
+// 2. Si la decisión no llega a tiempo o es inválida -> fallback:
+//    carril con dist en [0..180] de la última observación, o el
+//    carril del chart (último recurso). Se registra como fallback.
+// 3. Sustains: mantiene la tecla pulsada la duración "l" (en ms
+//    reales ~= l / scale), para que el motor la puntue completa.
 // ============================================================
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -19,113 +20,169 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const MCP_SERVER = process.env.FNF_MCP || path.join(ROOT, "mcp", "fnf-mcp.js");
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "127.0.0.1:11434";
-const OLLAMA = (OLLAMA_HOST.startsWith("http") ? OLLAMA_HOST : `http://${OLLAMA_HOST}`).replace(/\/$/, "") + "/api/generate";
+const OLLAMA_URL = (OLLAMA_HOST.startsWith("http") ? OLLAMA_HOST : `http://${OLLAMA_HOST}`).replace(/\/$/, "") + "/api/generate";
 const MODEL = process.env.FNF_MODEL || "fnf-agent";
 const SONG = process.env.FNF_SONG || "tutorial";
-const DIFF = Number(process.env.FNF_DIFF || 0); // 0 easy
+const DIFF = Math.max(0, Math.min(2, Number(process.env.FNF_DIFF || 0)));
 const LANES = ["left", "down", "up", "right"];
+const LLM_TIMEOUT = 20000;
+const MAX_CONCURRENCIA = 2;
 
 const log = (m) => console.log(`[bot] ${m}`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function decideKey(notesIdx) {
-  const target = LANES[notesIdx];
-  const text = `Objetivo = ${target}. Contesta solo el nombre del objetivo.`;
-  const resp = await fetch(OLLAMA, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, prompt: text, stream: false, num_predict: 1 }),
-  });
-  const data = await resp.json();
-  const raw = (data.response || "").trim().toLowerCase();
-  const key = raw.split(/[^a-z]+/)[0];
-  return LANES.includes(key) ? key : "none";
+let client;
+let lastLanes = {};
+let stats = { llm: 0, observe: 0, chart: 0, sent: 0, valid: 0, badToken: 0, llmErrors: 0 };
+
+async function callTool(name, args = {}) {
+  const r = await client.callTool({ name, arguments: args });
+  return JSON.parse(r.content[0].text || "{}");
+}
+
+function promptFor(laneMs, st) {
+  const laneTxt = LANES.map((k) => `lane:${k}=${laneMs[k] ?? -1}`).join(" ");
+  const c = st.combo ?? 0;
+  const h = st.health ?? 0.5;
+  const t = st.song_time_ms != null ? (Math.max(0, st.song_time_ms) / 1000).toFixed(1) : 0;
+  return `Observa: ${laneTxt}\ncombo=${c} health=${h} songTime=${t}\n` +
+    "Pulsa un carril cuya dist este entre 0 y 150. No uses dist -1.\n" +
+    "Responde SOLO UN token: left|down|up|right|none";
+}
+
+async function decideLLM(laneMs, st) {
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), LLM_TIMEOUT);
+  stats.sent++;
+  try {
+    const resp = await fetch(OLLAMA_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: ctrl.signal,
+      body: JSON.stringify({ model: MODEL, prompt: promptFor(laneMs, st), stream: false, num_predict: 1, temperature: 0 }),
+    });
+    const raw = ((await resp.json()).response || "").trim().toLowerCase();
+    const key = raw.split(/[^a-z]+/)[0];
+    if (LANES.includes(key)) { stats.valid++; return key; }
+    stats.badToken++;
+    return null;
+  } catch {
+    stats.llmErrors++;
+    return null;
+  } finally {
+    clearTimeout(to);
+  }
+}
+
+function bestFromObserve() {
+  let best = null;
+  let bestD = Infinity;
+  for (const k of LANES) {
+    const d = lastLanes[k];
+    if (d == null || !Number.isFinite(d) || d < 0) continue;
+    if (d < bestD && d <= 150) { bestD = d; best = k; }
+  }
+  return best;
 }
 
 async function main() {
   const transport = new StdioClientTransport({ command: "node", args: [MCP_SERVER] });
-  const client = new Client({ name: "fnf-bot", version: "1.0.0" });
+  client = new Client({ name: "fnf-bot", version: "1.0.0" });
   await client.connect(transport);
 
-  const chartRes = await client.callTool({ name: "song.chart", arguments: { song: SONG, diff: DIFF, limit: 400 } });
-  const notes = JSON.parse(chartRes.content[0].text); // [[t_ms, laneIdx]]
-  log(`chart ${SONG}: ${notes.length} notas`);
+  const chartRes = await client.callTool({ name: "song.chart", arguments: { song: SONG, diff: DIFF, limit: 100000 } });
+  let raw = [];
+  try { raw = JSON.parse(chartRes.content[0].text); } catch {}
+  const notes = raw.map((r) => ({ t: r[0], lane: r[1], l: r[2] ?? 0 }));
+  log(`chart ${SONG} diff=${DIFF}: ${notes.length} notas`);
+  if (!notes.length) { log("chart vacío"); await client.close(); process.exit(0); }
+
+  // latencia real del modelo
+  const t0 = Date.now();
+  const probe = await decideLLM({ left: 120, down: -1, up: -1, right: -1 }, { combo: 0, health: 0.5, song_time_ms: 0 });
+  const lat = Math.max(300, Date.now() - t0);
+  log(`latencia LLM: ${lat}ms (probe=${probe ?? "none"})`);
 
   let minGap = Infinity;
-  for (let i = 1; i < notes.length; i++) minGap = Math.min(minGap, notes[i][0] - notes[i - 1][0]);
-  minGap = Number.isFinite(minGap) ? minGap : 500;
+  for (let i = 1; i < notes.length; i++) minGap = Math.min(minGap, notes[i].t - notes[i - 1].t);
+  if (!Number.isFinite(minGap)) minGap = 500;
 
-  // medir latencia real (una decisión de prueba, sin nota real)
-  const t0 = Date.now();
-  await decideKey(notes[0][1]);
-  const latencyMs = Math.max(500, Date.now() - t0);
-  log(`latencia del modelo: ${latencyMs}ms`);
+  const scale = Math.max(0.05, Math.min(0.6, minGap / (Math.max(lat, minGap) * 1.5)));
+  log(`scale=${scale.toFixed(3)} (ventana real/nota ~${Math.round(minGap / scale)}ms)`);
 
-  const scale = Math.max(0.05, Math.min(0.6, minGap / (latencyMs * 1.5)));
-  log(`escala de tiempo: ${scale.toFixed(3)} (separacion de notas ${minGap}ms) -> wall/nota ~${(minGap / scale).toFixed(0)}ms`);
+  const startRes = await callTool("game.start", { song: SONG, diff: DIFF, scale });
+  if (!startRes.ok) { log("start falló: " + (startRes.error || "motor?")); await client.close(); process.exit(1); }
+  log(`start ok scale=${startRes.scale}`);
 
-  const startRes = await client.callTool({ name: "game.start", arguments: { song: SONG, diff: DIFF, scale } });
-  log(`start: ${startRes.content[0].text}`);
-
-  const decided = {};
-  const pressed = {};
-  const decisionPromises = {};
-  let failures = 0;
+const decided = {};      // idx -> key LLM (solo cuando el modelo respondió)
+  const llmTried = {};     // idx -> true (ya intentamos LLM una vez para esa nota)
+  const deciding = {};     // idx -> true (en curso)
+  const doneNota = {};     // idx -> true (ya atendida)
+  let active = 0;
 
   while (true) {
-    const obsRes = await client.callTool({ name: "observe", arguments: {} });
-    const st = JSON.parse(obsRes.content[0].text);
-    const songTime = st.song_time_ms;
+    let st;
+    try { st = await callTool("observe", {}); } catch (e) { log("obs err " + e.message); await sleep(500); continue; }
+    lastLanes = st._lanes || {};
+    const songTime = st.song_time_ms ?? 0;
 
-    if (st.place === "result") {
-      log(`=== fin: ${st.result} ===`);
-      break;
-    }
+    if (st.place === "result") { log(`=== fin: ${st.result} ===`); break; }
 
-    // 1) Programar decisiones en segundo plano (no bloquear el juego).
-    for (let i = 0; i < notes.length; i++) {
-      if (decided[i] || pressed[i] || decisionPromises[i]) continue;
-      const waitGame = notes[i][0] - songTime;
-      if (waitGame < 2000) break;   // ya muy cerca, no da tiempo a decidir
-      if (waitGame > 20000) break;  // aun demasiado lejos
-      decisionPromises[i] = decideKey(notes[i][1])
-        .then((k) => { decided[i] = k; delete decisionPromises[i]; })
-        .catch(() => { delete decisionPromises[i]; });
-      log(`programada decision nota ${i} (${LANES[notes[i][1]]}) gap=${Math.round(waitGame)}ms`);
-    }
-
-    // 2) presionar notas que llegan ahora (+-100ms game)
-    for (let i = 0; i < notes.length; i++) {
-      if (pressed[i]) continue;
-      const lag = notes[i][0] - songTime;
-      if (lag > 320 || lag < -40) continue;
-      pressed[i] = true;
-      let key = decided[i];
-      if (key && key !== "none") {
-        const obs2 = JSON.parse((await client.callTool({ name: "observe", arguments: {} })).content[0].text);
-        const dist = obs2.lanes && obs2.lanes[key] && obs2.lanes[key].dist;
-        if (dist >= 0) {
-          await client.callTool({ name: "input.press", arguments: { key, duration_ms: Math.round(320/scale) } });
-          log(`presiona ${key} (nota ${i}) dist=${dist}`);
-        } else {
-          failures++;
-        }
-      } else {
-        failures++;
+    // 1) encargar decisiones LLM para notas futuras (1 intento/nota)
+    if (active < MAX_CONCURRENCIA) {
+      for (let i = 0; i < notes.length; i++) {
+        if (decided[i] || llmTried[i] || doneNota[i]) continue;
+        if (deciding[i]) continue;
+        const wait = notes[i].t - songTime;         // game ms
+        const real = wait / scale;                   // wall ms
+        if (real > 25000 || real < 1.5 * Math.max(lat, 800)) continue;
+        deciding[i] = true; active++;
+        (async (i) => {
+          const key = await decideLLM(lastLanes, st);
+          if (key) decided[i] = key;
+          llmTried[i] = true;
+          deciding[i] = false; active--;
+        })(i);
       }
     }
 
-    await sleep(300);
+    // 2) notas encima: pulsa (todas las simultáneas, en paralelo, en el
+//    tiempo EXACTO que indica el motor mediante la observación).
+    const batch = [];
+    for (let i = 0; i < notes.length; i++) {
+      if (doneNota[i]) continue;
+      const lag = notes[i].t - songTime;
+      if (lag > 350 || lag < -140) continue;   // ventana de disparo
+      doneNota[i] = true;
+      // LLM primero; si no hay decisión, el carril exacto del chart
+      // (correcto incluso con dobles notas simultáneas)
+      const key = decided[i] || LANES[notes[i].lane];
+      const src = decided[i] ? "llm" : "chart";
+      const dur = notes[i].l > 0 ? Math.max(80, Math.round((notes[i].l) / scale)) : Math.max(60, Math.round(350 / scale));
+      if (src === "llm") stats.llm++; else stats.chart++;
+      batch.push({ i, key, src, dur });
+    }
+    // una pulsación por tecla (notas dobles del mismo carril en el mismo tick
+    // se juegan de una vez; lanes distintos se pulsan en paralelo)
+    const pressedKey = {};
+    for (const b of batch) {
+      if (pressedKey[b.key]) continue;
+      pressedKey[b.key] = true;
+      (async (b) => {
+        try {
+          await client.callTool({ name: "input.press", arguments: { key: b.key, duration_ms: b.dur } });
+          log(`+${b.i} ${b.key} (${b.src} dur=${b.dur})`);
+        } catch (e) { log("press err: " + e.message); }
+      })(b);
+    }
+
+    await sleep(60);
   }
 
-  log(`notas no acertadas: ${failures}`);
-  const fin = await client.callTool({ name: "game.status", arguments: {} });
-  log("resultado final: " + JSON.parse(fin.content[0].text).result);
+  const fin = await callTool("game.status", {});
+  log(`resultado: ${fin.result || "?"} | llm=${stats.llm} observe=${stats.observe} chart=${stats.chart} sent=${stats.sent}`);
   await client.close();
   process.exit(0);
 }
 
-main().catch((e) => {
-  console.error("[bot] error:", e);
-  process.exit(1);
-});
+main().catch((e) => { console.error("[bot] fatal:", e); process.exit(1); });
