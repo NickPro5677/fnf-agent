@@ -146,13 +146,17 @@ Logs:
 |----------|---------|-------------|
 | `FNF_SONG` | `tutorial` | `tutorial`, `bopeebo`, `test` |
 | `FNF_DIFF` | `0` | `0` easy · `1` normal · `2` hard |
+| `FNF_SONG` | `tutorial` | `tutorial`, `bopeebo`, `test` |
+| `FNF_DIFF` | `0` | `0` easy · `1` normal · `2` hard |
 | `FNF_MODEL` | `fnf-agent` | modelo Ollama |
 | `FNF_WEB_PORT` | `8787` | puerto del visor |
 | `FNF_WEB_HOST` | `0.0.0.0` | bind del visor |
+| `FNF_WEB_TOKEN` | *(vacío)* | si se define, las rutas `POST` del visor exigen `X-Fnf-Token` |
 | `OLLAMA_HOST` | `127.0.0.1:11434` | API de Ollama |
 
 ```bash
 FNF_SONG=bopeebo FNF_DIFF=1 bash bot/start_agent.sh
+FNF_WEB_TOKEN=secreto123 bash web/start_web.sh   # protege los controles
 FNF_WEB_PORT=8080 bash web/start_web.sh
 ```
 
@@ -160,15 +164,26 @@ FNF_WEB_PORT=8080 bash web/start_web.sh
 > el tiempo del juego (`scale`) para que cada nota tenga margen. `test` acaba
 > en pocos minutos; `tutorial` y `bopeebo` son más largos.
 
+## Cómo decide el bot (estrategia híbrida)
+
+El agente **no hace trampa**: la LLM recibe el estado OBSERVADO real
+(`observe` → distancias por carril en ms desde el motor, combo, health,
+tiempo) y responde `left|down|up|right|none` como dicta el `Modelfile`.
+
+- Si la decisión LLM llega a tiempo y es válida → la usa (se cuenta como `llm`).
+- Si no llega (Ollama caído/lento) o el token es inválido → **fallback**:
+  carril del chart (determinista), se cuenta como `chart`. Así el bot nunca
+  pierde una nota por culpa del modelo; la carencia queda visible en `llm=` .
+
 ## Herramientas MCP
 
 | Tool | Descripción |
 |------|-------------|
-| `observe` | estado + distancias por carril |
-| `input.press` | pulsa `left\|down\|up\|right\|enter\|escape` |
+| `observe` | estado + distancias por carril (ms) desde el motor |
+| `input.press` | pulsa `left\|down\|up\|right` (b) |
 | `game.start` | inicia sesión (`song`, `diff`, `scale`) |
 | `game.status` | estado del motor |
-| `song.chart` | notas del chart oficial |
+| `song.chart` | notas del chart oficial `[t_ms, carril, sustain_ms]` |
 | `session.reset` | reinicia la canción actual |
 
 ```bash
@@ -183,12 +198,28 @@ node mcp/test-client.mjs
 |--------|------|-----|
 | GET | `/` | HTML del visor |
 | GET | `/frame` | PNG del último frame |
-| GET | `/api/status` | estado motor + servicios |
+| GET | `/api/status` | estado motor + servicios + `auth` |
 | GET | `/api/services` | engine/agent/ollama online |
+| GET | `/api/charts` | lista de charts descubiertos (`name`, `diffs`, `scroll`) |
 | POST | `/api/engine/start\|stop` | arranca/para motor |
 | POST | `/api/agent/start\|stop` | arranca/para bot (`{song,diff}`) |
 | POST | `/api/game/start` | demo sin IA (`{song,diff,scale}`) |
 | GET | `/healthz` | healthcheck |
+
+> Si `FNF_WEB_TOKEN` está definido, los `POST` requieren cabecera
+> `X-Fnf-Token`; `/frame`, `/healthz` y los GET quedan siempre abiertos
+> (ver game, no tocar). El visor pregunta el token en la interfaz.
+
+## Desarrollo y tests
+
+```bash
+bash check.sh         # sintaxis + tests del motor + motor + visor + MCP
+bash check.sh --quick # solo sintaxis + tests (sin procesos)
+python3 tests/test_engine.py   # unit tests del motor
+```
+
+Cambios en el motor (hit windows, sustains, scroll) deben pasar
+`tests/test_engine.py` antes de jugar una canción larga.
 
 ## Solución de problemas
 
@@ -208,4 +239,6 @@ node mcp/test-client.mjs
 - `env/setup_env.sh` y `env/run_x.sh` eran un intento con FNF real en proot/Xvfb;
   el proyecto actual simula todo en Python/PIL — se pueden ignorar.
 - Para menos latencia prueba `FNF_MODEL=mobile` (si lo tienes en `ollama list`).
-- El visor es **solo control local**: no hay autenticación; no lo expongas a Internet.
+- El visor es **solo control local**; si lo expones a la LAN define
+  `FNF_WEB_TOKEN` para bloquear los `POST` de control (los GET de video
+  quedan abiertos). No lo expongas a Internet.
