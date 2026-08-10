@@ -6,7 +6,8 @@
 #   GET  /              -> HTML (frontend)
 #   GET  /frame         -> env/render/latest.png (no-store)
 #   GET  /api/status    -> JSON estado motor + servicios
-#   GET  /api/services  -> PIDs / online de engine, web, agent, ollama
+#   GET  /api/services  -> PIDs / online de engine, web, agent
+#   GET  /api/charts    -> lista de charts descubiertos
 #   POST /api/engine/{start,stop}
 #   POST /api/agent/{start,stop}   body opcional: {song,diff}
 #   GET  /healthz
@@ -15,7 +16,6 @@
 # ============================================================
 import json
 import os
-import signal
 import socket
 import subprocess
 import time
@@ -35,16 +35,10 @@ INDEX = os.path.join(ROOT, "index.html")
 PORT = int(os.environ.get("FNF_WEB_PORT", "8787"))
 HOST = os.environ.get("FNF_WEB_HOST", "0.0.0.0")
 TOKEN = os.environ.get("FNF_WEB_TOKEN", "") or ""  # si se define, exigimos X-Fnf-Token
-OLLAMA = os.environ.get("OLLAMA_HOST", "127.0.0.1:11434")
-if "://" not in OLLAMA:
-    OLLAMA_URL = f"http://{OLLAMA}"
-else:
-    OLLAMA_URL = OLLAMA
 
 ENGINE_PID = os.path.join(LOG_DIR, "engine.pid")
 AGENT_PID = os.path.join(LOG_DIR, "agent.pid")
 WEB_PID = os.path.join(LOG_DIR, "web.pid")
-OLLAMA_PID = os.path.join(LOG_DIR, "ollama.pid")
 
 
 def _pid_alive(pid_file):
@@ -101,17 +95,6 @@ def engine_status():
         return {"engine": "offline", "error": str(e), "place": "menu"}
 
 
-def ollama_online():
-    try:
-        import urllib.request
-
-        url = OLLAMA_URL.rstrip("/") + "/api/tags"
-        with urllib.request.urlopen(url, timeout=1.2) as r:
-            return r.status == 200
-    except Exception:
-        return False
-
-
 def services_status():
     return {
         "engine": bool(_pid_alive(ENGINE_PID)) or os.path.exists(SOCK),
@@ -119,7 +102,6 @@ def services_status():
         "agent": bool(_pid_alive(AGENT_PID)),
         "agent_pid": _pid_alive(AGENT_PID),
         "web_pid": _pid_alive(WEB_PID) or os.getpid(),
-        "ollama": ollama_online(),
         "sock": os.path.exists(SOCK),
         "frame": os.path.exists(FRAME_FILE) and os.path.getsize(FRAME_FILE) > 64,
     }
@@ -229,10 +211,14 @@ class Handler(BaseHTTPRequestHandler):
                             if isinstance(v, list)
                         }
                         scroll = c.get("scrollSpeed", {})
+                        if isinstance(scroll, dict):
+                            scroll_speed = scroll.get("easy") or scroll.get("base") or 1.0
+                        else:
+                            scroll_speed = 1.0
                         charts.append({
                             "name": name,
                             "diffs": diffs,
-                            "scroll": scroll.get("base", 1.0) if isinstance(scroll, dict) else 1.0,
+                            "scroll": scroll_speed,
                         })
             except Exception as e:
                 charts = []
@@ -280,6 +266,8 @@ class Handler(BaseHTTPRequestHandler):
                 eng = run_script(os.path.join(ENV_DIR, "start_engine.sh"))
                 if not eng["ok"]:
                     return self._json(500, {"ok": False, "error": "engine no arrancó", "detail": eng})
+            # Nunca dos agentes a la vez: parar el anterior antes de lanzar
+            run_script(os.path.join(BOT_DIR, "stop_agent.sh"))
             return self._json(200, run_script(os.path.join(BOT_DIR, "start_agent.sh"), extra))
 
         if path == "/api/agent/stop":

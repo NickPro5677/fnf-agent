@@ -73,7 +73,7 @@ class Engine:
         self.last_result = ""
         self.error = ""
         self.frame_seq = 0
-        self.sick = self.good = self.bad = self.miss = 0
+        self.sick = self.good = self.miss = 0
 
     # ---------------- sesion ----------------
     def start(self, song, diff=2, scale=1.0):
@@ -111,7 +111,7 @@ class Engine:
         self.keys = [False] * LANES
         self.last_result = ""
         self.error = ""
-        self.sick = self.good = self.bad = self.miss = 0
+        self.sick = self.good = self.miss = 0
         self.place = "playing"
         return True
 
@@ -176,10 +176,8 @@ class Engine:
                 off = abs(t - st)
                 if off <= 40:
                     self.sick += 1
-                elif off <= HIT_WINDOW_GOOD:
+                else:
                     self.good += 1
-                elif off <= HIT_WINDOW_MISS:
-                    self.bad += 1
             elif held and st >= t:  # tecla pulsada pero ya pasó su ventana buena
                 if abs(t - st) <= HIT_WINDOW_MISS:
                     note["status"] = "miss"
@@ -188,10 +186,10 @@ class Engine:
 
         if self.health <= 0:
             self.place = "result"
-            self.last_result = f"DEFEAT score={self.score} combo={self.max_combo} sick={self.sick} good={self.good} bad={self.bad} miss={self.miss}"
+            self.last_result = f"DEFEAT score={self.score} combo={self.max_combo} sick={self.sick} good={self.good} miss={self.miss}"
         elif st > self.song_len_ms:
             self.place = "result"
-            self.last_result = f"WIN score={self.score} combo={self.max_combo} sick={self.sick} good={self.good} bad={self.bad} miss={self.miss}"
+            self.last_result = f"WIN score={self.score} combo={self.max_combo} sick={self.sick} good={self.good} miss={self.miss}"
 
     # ---------------- render ----------------
     def render(self):
@@ -272,7 +270,7 @@ class Engine:
         # hud
         dr.text((20, 16), f"COMBO {self.combo}  SCORE {self.score}", fill=(255, 255, 255))
         dr.text((20, 40), f"{self.song}  t={(st if st else 0) / 1000:.2f}s", fill=(220, 220, 220))
-        dr.text((20, 60), f"judge  sick={self.sick} good={self.good} bad={self.bad} miss={self.miss}",
+        dr.text((20, 60), f"judge  sick={self.sick} good={self.good} miss={self.miss}",
                 fill=(180, 180, 190))
 
         if self.place == "result":

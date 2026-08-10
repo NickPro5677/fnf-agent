@@ -250,7 +250,6 @@
       <div class="svc" id="svc">
         <span class="pill" id="pEngine">engine</span>
         <span class="pill" id="pAgent">agent</span>
-        <span class="pill" id="pOllama">ollama</span>
         <span class="pill" id="pFrame">frame</span>
       </div>
     </div>
@@ -269,9 +268,9 @@
       <div class="row">
         <label class="field">canción
           <select id="songSel">
-            <option value="test">test (corta)</option>
             <option value="tutorial" selected>tutorial</option>
             <option value="bopeebo">bopeebo</option>
+            <option value="test">test (corta)</option>
           </select>
         </label>
         <label class="field">dificultad
@@ -297,7 +296,7 @@
 
     <div id="notice" class="hint">Esperando al motor…</div>
   </div>
-  <footer>FNF-Agent · Termux · red local · Redmi Note 11</footer>
+  <footer>FNF-Agent · Termux · red local</footer>
 
 <script>
 (function () {
@@ -315,6 +314,25 @@
     const h = { "Content-Type": "application/json" };
     if (token) h["X-Fnf-Token"] = token;
     return h;
+  }
+
+  async function loadCharts() {
+    try {
+      const r = await fetch("/api/charts");
+      const data = await r.json();
+      const list = (data.charts || []).filter((c) => c.name);
+      if (!list.length) return;
+      const sel = $("songSel");
+      const cur = sel.value;
+      sel.innerHTML = "";
+      list.forEach((c) => {
+        const opt = document.createElement("option");
+        opt.value = c.name;
+        opt.textContent = c.name;
+        sel.appendChild(opt);
+      });
+      if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+    } catch (_) {}
   }
 
   function tickFrame() {
@@ -368,7 +386,6 @@
     const svc = st.services || {};
     setPill("pEngine", !!svc.engine, "engine");
     setPill("pAgent", !!svc.agent, "agent");
-    setPill("pOllama", !!svc.ollama, "ollama");
     setPill("pFrame", !!svc.frame, "frame");
 
     const tokenCard = $("tokenCard");
@@ -395,9 +412,6 @@
     } else if (place === "RESULT") {
       notice.className = "hint";
       notice.textContent = st.result || "Fin de partida";
-    } else if (!svc.ollama) {
-      notice.className = "hint";
-      notice.innerHTML = "Motor listo. Arranca Ollama: <code>ollama serve</code> y luego ▶ Jugar";
     } else {
       notice.className = "hint";
       notice.textContent = "Listo — elige canción y pulsa ▶ Jugar (agente)";
@@ -413,7 +427,7 @@
     });
     if (r.status === 401) {
       setToken("");
-      $("tokenWrap").style.display = "block";
+      $("tokenCard").style.display = "block";
       $("notice").className = "error";
       $("notice").textContent = "Token requerido — introdúcelo arriba";
       return { ok: false, error: "token" };
@@ -460,7 +474,7 @@
     $("notice").className = res.ok ? "ok" : "error";
     $("notice").textContent = res.ok
       ? "Agente lanzado (" + song + ")"
-      : (res.out || res.error || "falló al lanzar agente — ¿ollama serve?");
+      : (res.out || res.error || "falló al lanzar agente");
   });
 
   $("btnAgentStop").onclick = () => withAction(async () => {
@@ -511,6 +525,7 @@
     }
   }, 500);
 
+  loadCharts();
   tickFrame();
 })();
 </script>

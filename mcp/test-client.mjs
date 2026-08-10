@@ -22,6 +22,9 @@ console.log("observe:", JSON.stringify((await client.callTool({ name: "observe",
 console.log("chart:", JSON.stringify((await client.callTool({ name: "song.chart", arguments: { song: "tutorial", diff: 0, limit: 5 } })).content[0].text));
 await client.callTool({ name: "input.press", arguments: { key: "left", duration_ms: 100 } });
 console.log("press: ok");
+await client.callTool({ name: "input.key", arguments: { key: "down", down: true } });
+await client.callTool({ name: "input.key", arguments: { key: "down", down: false } });
+console.log("key: ok");
 
 await client.close();
 process.exit(0);

@@ -1,17 +1,15 @@
 // ============================================================
 // fnf-agent/mcp/fnf-mcp.js
-// Servidor MCP (stdio). Expone las herramientas mínimas del agente:
-//   - observe       : estado simbólico + percepción del frame
+// Servidor MCP (stdio). Expone las herramientas del agente:
+//   - observe       : estado simbólico del motor (distancias por carril)
 //   - input.press   : inyecta una tecla (flecha) con duración
 //   - game.start    : inicia sesión (song, diff, scale)
 //   - game.status   : estado completo del motor
-//   - song.chart    : lista de notas próximas desde el chart
-//   - session.reset : reinicia canción actual
-// Puente: motor FNF (unix socket) + percepción (perceive.py).
+//   - song.chart    : lista de notas desde el chart oficial
+// Puente: motor FNF (unix socket).
 // ============================================================
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { execSync } from "node:child_process";
 import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
@@ -22,8 +20,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = process.env.FNF_ROOT || path.resolve(__dirname, "..");
 const SOCKET = process.env.FNF_SOCK || path.join(ROOT, "env", "run", "engine.sock");
 const CHARTS = process.env.FNF_CHARTS_DIR || path.join(ROOT, "env", "charts");
-const PERCEIVE = path.join(ROOT, "perception", "perceive.py");
-const PYTHON = process.env.PYTHON || "python3";
 
 // ---------- puente al motor ----------
 function engineCall(payload, timeoutMs = 5000) {
@@ -51,11 +47,6 @@ function engineCall(payload, timeoutMs = 5000) {
   });
 }
 
-function perceive() {
-  const out = execSync(`${PYTHON} ${PERCEIVE}`, { encoding: "utf8", timeout: 8000 });
-  return JSON.parse(out);
-}
-
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -68,16 +59,14 @@ const server = new McpServer({
 // ---------- observe ----------
 server.tool(
   "observe",
-  "Devuelve el estado simbólico del juego: distancia de la flecha por carril (dist en ms, -1 = sin flecha), combo, salud, canción, tiempo y lugar.",
+  "Devuelve el estado simbólico del motor: distancia de la flecha por carril (dist en ms, -1 = sin flecha), combo, salud, canción, tiempo y lugar.",
   { },
   async () => {
     try {
       const st = await engineCall({ cmd: "status" });
-      // El motor ya devuelve "lanes" = distancia en ms por carril (rápido y exacto).
-      const lanes = st.lanes || {};
       return {
         content: [
-          { type: "text", text: JSON.stringify({ ...st, _lanes: lanes, _perception: st.lanes && Object.keys(st.lanes).length ? "engine" : "perception" }) },
+          { type: "text", text: JSON.stringify({ ...st }) },
         ],
       };
     } catch (e) {
@@ -89,18 +78,29 @@ server.tool(
 // ---------- input.press ----------
 server.tool(
   "input.press",
-  "Pulsa una tecla durante `duration_ms` milisegundos. key: left|down|up|right|enter|escape",
+  "Pulsa una tecla durante `duration_ms` milisegundos. key: left|down|up|right",
   { key: z.string(), duration_ms: z.number().optional() },
   async ({ key, duration_ms = 120 }) => {
     try {
-      const aliases = { enter: null, escape: null };
       await engineCall({ cmd: "key", key, down: true });
-      if (key === "enter" || key === "escape") {
-        return { content: [{ type: "text", text: `tecla ${key} enviada (menú)` }] };
-      }
       await sleep(Math.max(20, Number(duration_ms)));
       await engineCall({ cmd: "key", key, down: false });
-      return { content: [{ type: "text", text: `press ${key} ${duration_ms}ms` }] };
+      return { content: [{ type: "text", text: JSON.stringify({ ok: true, key, duration_ms }) }] };
+    } catch (e) {
+      return { content: [{ type: "text", text: `error: ${e.message}` }] };
+    }
+  },
+);
+
+// ---------- input.key ----------
+server.tool(
+  "input.key",
+  "Suelta o mantiene una tecla (left|down|up|right). `down`: true = pulsada, false = soltada. Control fino para sustains.",
+  { key: z.string(), down: z.boolean() },
+  async ({ key, down }) => {
+    try {
+      await engineCall({ cmd: "key", key, down });
+      return { content: [{ type: "text", text: JSON.stringify({ ok: true, key, down }) }] };
     } catch (e) {
       return { content: [{ type: "text", text: `error: ${e.message}` }] };
     }
@@ -154,28 +154,6 @@ server.tool(
       return {
         content: [{ type: "text", text: JSON.stringify(notes.slice(0, limit)) }],
       };
-    } catch (e) {
-      return { content: [{ type: "text", text: `error: ${e.message}` }] };
-    }
-  },
-);
-
-// ---------- session.reset ----------
-server.tool(
-  "session.reset",
-  "Reinicia la canción actual (mismos song/diff/scale de la sesión).",
-  {},
-  async () => {
-    try {
-      const st = await engineCall({ cmd: "status" });
-      if (st.place === "menu" && !st.song) {
-        return { content: [{ type: "text", text: "no hay sesión activa" }] };
-      }
-      const song = st.song || "tutorial";
-      const diff = st.diff ?? 2;
-      const scale = st.scale ?? 0.25;
-      const res = await engineCall({ cmd: "start", song, diff, scale });
-      return { content: [{ type: "text", text: JSON.stringify(res) }] };
     } catch (e) {
       return { content: [{ type: "text", text: `error: ${e.message}` }] };
     }

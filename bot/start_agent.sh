@@ -2,7 +2,8 @@
 # ============================================================
 # fnf-agent/bot/start_agent.sh
 # Arranca el agente (bot_loop.js) en background.
-# Variables: FNF_SONG (tutorial|bopeebo|test), FNF_DIFF (0..2).
+# Variables: FNF_SONG (tutorial|bopeebo|test), FNF_DIFF (0..2),
+#            FNF_SCALE (override del factor de tiempo).
 # ============================================================
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,12 +22,7 @@ if [ -f "$PID_FILE" ]; then
   rm -f "$PID_FILE"
 fi
 
-# Aviso si Ollama no responde (el bot fallará al decidir)
-if ! curl -sf --max-time 1 "http://127.0.0.1:11434/api/tags" >/dev/null 2>&1; then
-  echo "[agent] ADVERTENCIA: Ollama no responde en :11434 — ejecuta 'ollama serve'"
-fi
-
 nohup node "$BOT_JS" >>"$LOG_FILE" 2>&1 &
 echo $! > "$PID_FILE"
-echo "[agent] arrancado pid $(cat "$PID_FILE") (song=${FNF_SONG:-tutorial} diff=${FNF_DIFF:-0})"
+echo "[agent] arrancado pid $(cat "$PID_FILE") (song=${FNF_SONG:-tutorial} diff=${FNF_DIFF:-0} scale=${FNF_SCALE:-auto})"
 echo "[agent] logs: $LOG_FILE"

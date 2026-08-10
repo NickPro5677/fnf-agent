@@ -3,6 +3,10 @@
 # fnf-agent/tests/test_engine.py
 # Tests unitarios del motor (sin socket): sustains, hit windows,
 # scrollSpeed, scorings y resultado final.
+# Incluye un test de REGRESIÓN del patrón real del bot (autoplayer
+# de reglas): pulsar por carril con engagement y soltar tras el
+# final de la nota. Este test hubiera cazado el bug que rompía
+# los sustains (release ~350ms antes del fin).
 # Run: python3 tests/test_engine.py  (o bash check.sh)
 # ============================================================
 import os
@@ -49,6 +53,50 @@ def play_perfect(eng):
             if n["status"] == "held" and st >= n["t"] + n["l"] + 1:
                 eng.keys[n["lane"]] = False
         eng.update(3)
+    return eng
+
+
+def play_like_bot(eng, scale):
+    """Replica el autoplayer de reglas (bot/bot_loop.js) sobre el motor:
+    engagement por carril con LEAD=200, soltando después de t+l+SLACK."""
+    LEAD = 200.0
+    SLACK = 120.0
+    MISS_EDGE = -150.0
+    TICK = 66.0
+    lanes = [False, False, False, False]   # tecla abajo
+    release = [0.0] * 4                     # wall-ms cuando soltar
+    now = 0.0
+    engine_notes = eng.notes
+    done = [False] * len(engine_notes)
+    while eng.place == "playing" and eng.game_time < eng.song_len_ms + 5000:
+        now += TICK
+        st = eng.game_time
+        # soltar engagements vencidos
+        for li in range(4):
+            if lanes[li] and release[li] > 0 and now >= release[li]:
+                lanes[li] = False
+                release[li] = 0
+                eng.keys[li] = False
+        # programar notas pendientes
+        for i, note in enumerate(engine_notes):
+            if done[i]:
+                continue
+            lag = note["t"] - st
+            if lag > LEAD:
+                continue
+            if lag < MISS_EDGE:
+                done[i] = True
+                continue
+            li = note["lane"]
+            rel = now + max(10.0, (note["t"] + note["l"] + SLACK - st) / scale)
+            if lanes[li]:
+                release[li] = max(release[li], rel)
+            else:
+                lanes[li] = True
+                release[li] = rel
+                eng.keys[li] = True
+            done[i] = True
+        eng.update(TICK)
     return eng
 
 
@@ -116,6 +164,27 @@ def main():
     e2, _ = new_engine("test", 99)
     check("clamp -5->0", e1.diff == 0, str(e1.diff))
     check("clamp 99->2", e2.diff == 2, str(e2.diff))
+
+    # 8) REGRESIÓN: patrón del bot (engagement por carril) en tutorial —
+    #    el sustain no debe romperse (bug: se soltaba la tecla ~350ms antes)
+    eng, _ = new_engine("tutorial", 0)
+    eng.scale = 0.6
+    play_like_bot(eng, eng.scale)
+    check("bot tutorial -> WIN", eng.last_result.startswith("WIN"), eng.last_result)
+    check("bot tutorial sin miss", eng.miss == 0, f"miss={eng.miss}")
+    sust = [n for n in eng.notes if n["l"] > 0]
+    check("bot tutorial sustains aciertos", all(n["status"] == "done" for n in sust),
+          [n["status"] for n in sust])
+
+    # 9) REGRESIÓN: bopeebo easy (66 sustains) jugado como el bot -> WIN
+    eng, _ = new_engine("bopeebo", 0)
+    eng.scale = 0.6
+    play_like_bot(eng, eng.scale)
+    check("bot bopeebo -> WIN", eng.last_result.startswith("WIN"), eng.last_result)
+    check("bot bopeebo sin miss", eng.miss == 0, f"miss={eng.miss}")
+    sust = [n for n in eng.notes if n["l"] > 0]
+    broken = [n for n in sust if n["status"] == "miss"]
+    check("bot bopeebo sustains intactos", len(broken) == 0, f"rotos={len(broken)}")
 
     print(f"\nPASS {PASS}  FAIL {FAIL}")
     sys.exit(0 if FAIL == 0 else 1)

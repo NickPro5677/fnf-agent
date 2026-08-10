@@ -13,5 +13,5 @@ if [ -f "$PID_FILE" ]; then
   fi
   rm -f "$PID_FILE"
 fi
-pkill -f "bot_loop.js" 2>/dev/null
+pkill -f "$ROOT/bot/bot_loop.js" 2>/dev/null
 echo "[agent] detenido."

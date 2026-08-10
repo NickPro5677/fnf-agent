@@ -1,36 +1,35 @@
-# FNF-Agent — IA que juega Friday Night Funkin' en Termux
+# FNF-Agent — un agente que juega Friday Night Funkin' en Termux
 
-Agente **100% local** para Android (probado en Redmi Note 11 + Termux):
+Agente **100% local** para Android (probado en Termux):
 
-- **Ollama** (`fnf-agent` sobre `llama3.2:1b`) decide qué tecla pulsar.
-- **MCP** conecta el cerebro con el motor del juego.
 - **Motor FNF en Python** (PIL) renderiza la highway, carga charts oficiales
-  (formato v2.0.0) y recibe teclas por socket UNIX.
-- **Percepción simbólica** lee `env/render/latest.png` y mide distancias por carril.
+  (formato v2.0.0), simula gameplay y recibe teclas por socket UNIX.
+- **MCP** (Node) conecta el bot con el motor.
+- **Bot de reglas** (`bot_loop.js`): lee el chart oficial (su memoria) y pulsa
+  cada nota en su ventana usando el reloj del motor (`observe`). Determinista,
+  rápido y sin dependencias: **no hay LLM, no hay comunicación con Ollama**.
 - **Visor web** en el móvil (o en la misma Wi‑Fi) para ver jugar al agente en vivo.
 
 ## Arquitectura
 
 ```
-bot/bot_loop.js          → bucle del agente (Ollama + cliente MCP)
+bot/bot_loop.js          → bucle del agente (autoplayer de reglas + cliente MCP)
 mcp/fnf-mcp.js           → servidor MCP (tools para jugar)
-perception/perceive.py   → frame → distancias por carril
 env/fnf_engine.py        → motor (simula + renderiza + socket UNIX)
 env/charts/*.json        → tutorial, bopeebo, test
 web/server.py + index.html → visor HTTP + controles
-model/Modelfile          → modelo Ollama "fnf-agent"
 start_all.sh / stop_all.sh → arranque / parada del stack
 ```
 
 ```
   ┌─────────────┐  socket   ┌────────────┐  stdio   ┌──────────────┐
   │ fnf_engine  │◄─────────►│  fnf-mcp   │◄────────►│ bot_loop.js  │
-  │  (python)   │           │  (node)    │          │ + Ollama     │
+  │  (python)   │           │  (node)    │          │ (reglas)     │
   └──────┬──────┘           └─────┬──────┘          └──────────────┘
-         │ latest.png             │ observe
+         │ latest.png             │ observe (song_time / estado)
          ▼                        ▼
-  ┌─────────────┐          perception/
-  │  web visor  │          perceive.py
+  ┌─────────────┐
+  │  web visor  │
   │  :8787      │
   └─────────────┘
 ```
@@ -39,14 +38,12 @@ start_all.sh / stop_all.sh → arranque / parada del stack
 
 | Paquete | Para qué |
 |---------|----------|
-| `python3` + `python-pillow` | motor + percepción + visor |
+| `python3` + `python-pillow` | motor + visor |
 | `nodejs` | bot + MCP |
-| `ollama` | modelo local |
-| ~2 GB RAM libres | inferencia en el teléfono |
 
 ```sh
 pkg update
-pkg install python python-pillow nodejs ollama
+pkg install python python-pillow nodejs
 ```
 
 ## Instalación (una vez)
@@ -54,24 +51,11 @@ pkg install python python-pillow nodejs ollama
 ```sh
 cd ~/fnf-agent
 npm install
-
-# Ollama debe estar corriendo para pull/create
-ollama serve &          # o en otra sesión de Termux
-ollama pull llama3.2:1b-instruct-q4_K_M
-ollama create fnf-agent -f model/Modelfile
-ollama list             # debe listar fnf-agent
 ```
 
-Prueba rápida del modelo (debe contestar algo con `right`):
+## Cómo ejecutar
 
-```bash
-curl -s http://127.0.0.1:11434/api/generate \
-  -d '{"model":"fnf-agent","prompt":"Objetivo = right. Contesta solo el nombre del objetivo.","stream":false,"num_predict":4}'
-```
-
-## Cómo ejecutar (recomendado)
-
-### 1) Arrancar todo
+### Arrancar todo
 
 ```bash
 cd ~/fnf-agent
@@ -80,13 +64,12 @@ bash start_all.sh
 
 Eso levanta:
 
-1. **Ollama** (si no estaba)
-2. **Motor FNF**
-3. **Visor web** en el puerto `8787`
+1. **Motor FNF**
+2. **Visor web** en el puerto `8787`
 
-### 2) Abrir el visor
+### Abrir el visor
 
-En el mismo móvil (navegador o Termux:API / WebView):
+En el mismo móvil (navegador o WebView):
 
 ```
 http://127.0.0.1:8787
@@ -96,39 +79,35 @@ Desde otro dispositivo en la misma Wi‑Fi (la IP la imprime `start_all.sh` /
 `web/start_web.sh`):
 
 ```
-http://<IP-del-Redmi>:8787
+http://<IP-del-móvil>:8787
 ```
 
 En el visor:
 
-1. Comprueba que **engine** y **ollama** estén en verde.
-2. Elige canción (`test` es la más corta, ideal para probar).
+1. Comprueba que **engine** esté en verde.
+2. Elige canción (`tutorial` o `bopeebo`; `test` es la más corta).
 3. Pulsa **▶ Jugar (agente)**.
 4. Mira el frame en vivo, score, combo y health.
 
-### 3) Parar
+### Parar
 
 ```bash
-bash stop_all.sh                 # agente + motor + web (Ollama sigue)
-STOP_OLLAMA=1 bash stop_all.sh   # también apaga Ollama
+bash stop_all.sh
 ```
 
 ## Alternativa solo por terminal
 
 ```bash
-# Terminal / sesión 1
-ollama serve
-
-# Sesión 2 — motor
+# Sesión 1 — motor
 bash env/start_engine.sh
 
-# Sesión 3 — visor (opcional)
+# Sesión 2 — visor (opcional)
 bash web/start_web.sh
 
-# Sesión 4 — agente
-FNF_SONG=test FNF_DIFF=0 bash bot/start_agent.sh
-# o en primer plano:
+# Sesión 3 — agente (en primer plano)
 FNF_SONG=test node bot/bot_loop.js
+# o en background:
+FNF_SONG=test bash bot/start_agent.sh
 ```
 
 Logs:
@@ -138,7 +117,6 @@ Logs:
 | Motor | `logs/engine.log` |
 | Agente | `logs/agent.log` |
 | Visor | `logs/web.log` |
-| Ollama | `logs/ollama.log` |
 
 ## Variables de entorno
 
@@ -146,13 +124,10 @@ Logs:
 |----------|---------|-------------|
 | `FNF_SONG` | `tutorial` | `tutorial`, `bopeebo`, `test` |
 | `FNF_DIFF` | `0` | `0` easy · `1` normal · `2` hard |
-| `FNF_SONG` | `tutorial` | `tutorial`, `bopeebo`, `test` |
-| `FNF_DIFF` | `0` | `0` easy · `1` normal · `2` hard |
-| `FNF_MODEL` | `fnf-agent` | modelo Ollama |
+| `FNF_SCALE` | auto | factor de tiempo (más bajo = más lento); auto ≈ 0.5–0.7 |
 | `FNF_WEB_PORT` | `8787` | puerto del visor |
 | `FNF_WEB_HOST` | `0.0.0.0` | bind del visor |
 | `FNF_WEB_TOKEN` | *(vacío)* | si se define, las rutas `POST` del visor exigen `X-Fnf-Token` |
-| `OLLAMA_HOST` | `127.0.0.1:11434` | API de Ollama |
 
 ```bash
 FNF_SONG=bopeebo FNF_DIFF=1 bash bot/start_agent.sh
@@ -160,31 +135,24 @@ FNF_WEB_TOKEN=secreto123 bash web/start_web.sh   # protege los controles
 FNF_WEB_PORT=8080 bash web/start_web.sh
 ```
 
-> Por la latencia de Ollama en móvil (~3–6 s por decisión), el bot **ralentiza**
-> el tiempo del juego (`scale`) para que cada nota tenga margen. `test` acaba
-> en pocos minutos; `tutorial` y `bopeebo` son más largos.
+## Cómo juega el bot (sin trampas, sin LLM)
 
-## Cómo decide el bot (estrategia híbrida)
-
-El agente **no hace trampa**: la LLM recibe el estado OBSERVADO real
-(`observe` → distancias por carril en ms desde el motor, combo, health,
-tiempo) y responde `left|down|up|right|none` como dicta el `Modelfile`.
-
-- Si la decisión LLM llega a tiempo y es válida → la usa (se cuenta como `llm`).
-- Si no llega (Ollama caído/lento) o el token es inválido → **fallback**:
-  carril del chart (determinista), se cuenta como `chart`. Así el bot nunca
-  pierde una nota por culpa del modelo; la carencia queda visible en `llm=` .
+El bot **no adivina**: tiene el chart oficial en memoria (es su "memoria" de la
+canción) y sincroniza la pulsación con el reloj real del motor (`observe` →
+`song_time_ms`). Pulsa en su ventana, mantiene los sustains hasta `t + l` y deja
+que el motor valide cada golpe con sus ventanas de hit/miss (tardío = miss →
+pierde health y combo). No hay LLM que decida; la decisión es exacta.
 
 ## Herramientas MCP
 
 | Tool | Descripción |
 |------|-------------|
 | `observe` | estado + distancias por carril (ms) desde el motor |
-| `input.press` | pulsa `left\|down\|up\|right` (b) |
+| `input.press` | pulsa una tecla `left|down|up|right` durante `duration_ms` |
+| `input.key` | suelta/mantiene una tecla (`down: true|false`) — control fino de sustains |
 | `game.start` | inicia sesión (`song`, `diff`, `scale`) |
 | `game.status` | estado del motor |
 | `song.chart` | notas del chart oficial `[t_ms, carril, sustain_ms]` |
-| `session.reset` | reinicia la canción actual |
 
 ```bash
 # Motor debe estar arriba
@@ -199,46 +167,44 @@ node mcp/test-client.mjs
 | GET | `/` | HTML del visor |
 | GET | `/frame` | PNG del último frame |
 | GET | `/api/status` | estado motor + servicios + `auth` |
-| GET | `/api/services` | engine/agent/ollama online |
+| GET | `/api/services` | engine/agent online |
 | GET | `/api/charts` | lista de charts descubiertos (`name`, `diffs`, `scroll`) |
 | POST | `/api/engine/start\|stop` | arranca/para motor |
-| POST | `/api/agent/start\|stop` | arranca/para bot (`{song,diff}`) |
+| POST | `/api/agent/start\|stop` | arranca/para bot (`{song,diff}`; para el anterior antes de lanzar) |
 | POST | `/api/game/start` | demo sin IA (`{song,diff,scale}`) |
 | GET | `/healthz` | healthcheck |
 
 > Si `FNF_WEB_TOKEN` está definido, los `POST` requieren cabecera
-> `X-Fnf-Token`; `/frame`, `/healthz` y los GET quedan siempre abiertos
-> (ver game, no tocar). El visor pregunta el token en la interfaz.
+> `X-Fnf-Token`; los GET quedan siempre abiertos (ver juego, no tocar).
 
 ## Desarrollo y tests
 
 ```bash
-bash check.sh         # sintaxis + tests del motor + motor + visor + MCP
+bash check.sh         # sintaxis + tests + motor + visor + MCP (limpia al salir)
 bash check.sh --quick # solo sintaxis + tests (sin procesos)
 python3 tests/test_engine.py   # unit tests del motor
 ```
 
-Cambios en el motor (hit windows, sustains, scroll) deben pasar
-`tests/test_engine.py` antes de jugar una canción larga.
+`tests/test_engine.py` incluye un **test de regresión del patrón del bot**
+(play_like_bot): juega `tutorial` y `bopeebo` como lo hace el bot real y exige
+WIN sin sustains rotos. Cambios en el motor o en el bot deben pasar este test.
 
 ## Solución de problemas
 
 | Problema | Solución |
 |----------|----------|
 | Motor offline en el visor | `bash env/start_engine.sh` |
-| `model 'fnf-agent' not found` | `ollama create fnf-agent -f model/Modelfile` |
-| Ollama no responde | `ollama serve` (deja la sesión abierta) |
 | Socket ocupado / stale | `bash env/stop_engine.sh` y vuelve a arrancar |
 | Frame negro / 404 | el motor no está renderizando; revisa `logs/engine.log` |
-| Agente no pulsa | mira `logs/agent.log`; suele ser Ollama caído o latencia alta |
+| Agente no pulsa | mira `logs/agent.log` |
 | No entra desde otro dispositivo | misma Wi‑Fi, firewall/AP isolation; prueba `http://IP:8787` |
 | `chart no existe` | usa `tutorial`, `bopeebo` o `test` |
 
 ## Notas
 
-- `env/setup_env.sh` y `env/run_x.sh` eran un intento con FNF real en proot/Xvfb;
-  el proyecto actual simula todo en Python/PIL — se pueden ignorar.
-- Para menos latencia prueba `FNF_MODEL=mobile` (si lo tienes en `ollama list`).
 - El visor es **solo control local**; si lo expones a la LAN define
   `FNF_WEB_TOKEN` para bloquear los `POST` de control (los GET de video
   quedan abiertos). No lo expongas a Internet.
+- Versiones con LLM (Ollama) se eliminaron en v2: eran lentas (~10 s/decisión),
+  no respondían el prompt y torpedeaban el ritmo. Si quieres un "cerebro" real,
+  ese es un trabajo aparte; este repo es el entorno + autoplayer perfecto.
