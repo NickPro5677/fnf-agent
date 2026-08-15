@@ -1,7 +1,7 @@
 {
   "name": "fnf-agent",
-  "version": "2.0.0",
-  "description": "Agente (autoplayer de reglas) que juega Friday Night Funkin' en Termux: motor FNF + MCP + visor web.",
+  "version": "3.0.0",
+  "description": "Plataforma local de agentes para Friday Night Funkin' en Termux: motor fiel + agentes enchufables + visor.",
   "main": "index.js",
   "scripts": {
     "test": "bash check.sh --quick"

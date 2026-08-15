@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
-# fnf-agent/check.sh
-# Harness de validación del stack:
-#   - sintaxis (py/node)
-#   - tests del motor + regresión del patrón del bot (tests/test_engine.py)
-#   - motor arriba y respondiendo por socket
-#   - visor: /healthz, /api/charts, /frame
-#   - MCP: tools + juego de prueba (test-client.mjs)
-# Limpia los procesos que inicia al terminar.
+# check.sh — sintaxis, tests del motor, stack (motor/visor/MCP)
 # Uso: bash check.sh [--quick]
-#   --quick: solo sintaxis + tests (sin procesos). Integral por defecto.
 # ============================================================
 set -u
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -23,15 +15,17 @@ ok() { printf "  ok  %s\n" "$1"; }
 bad() { printf "  FAIL %s\n" "$1"; FAILED=1; }
 
 step "sintaxis"
-for f in env/fnf_engine.py web/server.py; do
+for f in env/fnf_engine.py web/server.py tests/test_engine.py; do
   python3 -m py_compile "$f" 2>/dev/null && ok "py_compile $f" || bad "py_compile $f"
 done
-for f in mcp/fnf-mcp.js bot/bot_loop.js; do
+for f in mcp/fnf-mcp.js bot/bot_loop.js bot/lib/engine.js bot/lib/chart.js bot/agents/chart.js bot/agents/observe.js; do
   node --check "$f" && ok "node --check $f" || bad "node --check $f"
 done
+N=$(node --input-type=module -e "import { loadPlayable } from './bot/lib/chart.js'; console.log(loadPlayable('bopeebo',0,'player').length)")
+[ "$N" = "44" ] && ok "chart.js bopeebo player=44" || bad "chart.js bopeebo player=$N"
 
 step "tests del motor (+ regresión del bot)"
-python3 tests/test_engine.py >/dev/null 2>&1 && ok "test_engine" || { bad "test_engine"; }
+python3 tests/test_engine.py && ok "test_engine" || { bad "test_engine"; }
 
 if [ "${1:-}" = "--quick" ]; then
   [ "$FAILED" = 1 ] && { echo; echo "== fallos =="; exit 1; }
@@ -53,9 +47,10 @@ if [ ! -S env/run/engine.sock ]; then
 fi
 ST=$(python3 env/client.py status 2>/dev/null)
 echo "$ST" | grep -q "'place'" && ok "motor responde status" || bad "motor status"
+python3 env/client.py list 2>/dev/null | grep -q "bopeebo" && ok "motor list" || bad "motor list"
 
 step "visor web"
-bash web/start_web.sh >/dev/null 2>&1 || true
+FNF_WEB_HOST=127.0.0.1 bash web/start_web.sh >/dev/null 2>&1 || true
 STARTED_WEB=1
 for _ in $(seq 1 20); do
   [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8787/healthz 2>/dev/null)" = "200" ] && break
@@ -65,12 +60,15 @@ for u in /healthz /api/charts /frame; do
   code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8787$u" 2>/dev/null)
   [ "$code" = "200" ] && ok "GET $u -> 200" || bad "GET $u -> $code"
 done
+CH=$(curl -s http://127.0.0.1:8787/api/charts 2>/dev/null)
+echo "$CH" | grep -q '"player"' && ok "charts incluyen player counts" || bad "charts player counts"
 
 step "MCP"
 OUT=$(timeout 30 node mcp/test-client.mjs 2>&1)
 echo "$OUT" | grep -q "TOOLS:" && ok "tools MCP" || bad "tools MCP: $(echo "$OUT" | tail -1)"
+echo "$OUT" | grep -q "song.list" && ok "tool song.list" || bad "tool song.list"
 echo "$OUT" | grep -q "press: ok" && ok "game end-to-end" || bad "game end-to-end"
-python3 env/client.py start tutorial 0 1 >/dev/null 2>&1 || true
+python3 env/client.py start tutorial 0 1 player >/dev/null 2>&1 || true
 
 [ "$FAILED" = 1 ] && { echo; echo "== hay fallos =="; exit 1; }
 echo; echo "== todo ok =="

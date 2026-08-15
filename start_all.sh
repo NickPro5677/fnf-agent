@@ -18,7 +18,8 @@ bash "$ROOT/env/start_engine.sh" && echo
 bash "$ROOT/web/start_web.sh"
 
 echo
-echo "Listo. Abre el visor y pulsa ▶ Jugar, o:"
-echo "  FNF_SONG=test bash $ROOT/bot/start_agent.sh"
+echo "Listo. Abre http://127.0.0.1:${FNF_WEB_PORT:-8787} y pulsa ▶ Jugar, o:"
+echo "  FNF_SONG=test FNF_AGENT=chart bash $ROOT/bot/start_agent.sh"
+echo "  LAN: FNF_WEB_HOST=0.0.0.0 FNF_WEB_TOKEN=… bash $ROOT/start_all.sh"
 echo
 echo "Parar todo:  bash $ROOT/stop_all.sh"
