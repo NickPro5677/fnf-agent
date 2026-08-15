@@ -36,13 +36,7 @@
     color: var(--accent);
     margin: 4px 0 12px;
   }
-  #stack {
-    width: 100%;
-    max-width: 520px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
+  #stack { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 12px; }
   .card {
     background: var(--panel);
     border: 1px solid var(--line);
@@ -57,134 +51,59 @@
     border-radius: 12px;
     background: #000;
   }
-  #live {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    image-rendering: auto;
-  }
+  #live { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
   #placeBadge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    padding: 4px 12px;
-    border-radius: 999px;
-    font-size: 12px;
-    letter-spacing: 1px;
-    font-weight: 700;
-    background: rgba(0,0,0,.55);
-    border: 1px solid rgba(255,212,91,.4);
-    color: var(--yellow);
+    position: absolute; top: 10px; right: 10px;
+    padding: 4px 12px; border-radius: 999px; font-size: 12px;
+    letter-spacing: 1px; font-weight: 700;
+    background: rgba(0,0,0,.55); border: 1px solid rgba(255,212,91,.4); color: var(--yellow);
   }
   #conn {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--dim);
-    background: rgba(0,0,0,.55);
-    padding: 4px 10px;
-    border-radius: 999px;
+    position: absolute; top: 10px; left: 10px;
+    display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim);
+    background: rgba(0,0,0,.55); padding: 4px 10px; border-radius: 999px;
   }
-  #dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: #6a6391;
-  }
+  #dot { width: 10px; height: 10px; border-radius: 50%; background: #6a6391; }
   #dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green); }
   #dot.offline { background: var(--red);   box-shadow: 0 0 8px var(--red); }
 
-  .hudrow {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-  .metric {
-    background: rgba(255,255,255,.04);
-    border-radius: 10px;
-    padding: 8px 12px;
-  }
+  .hudrow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hud3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .metric { background: rgba(255,255,255,.04); border-radius: 10px; padding: 8px 12px; }
   .metric .k { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; }
   .metric .v { font-size: 20px; font-weight: 800; }
   .metric .v.sub { font-size: 15px; font-weight: 600; word-break: break-word; }
   #scorev { color: var(--yellow); }
   #combov { color: var(--green); }
+  #accv { color: var(--blue); }
 
   #healthWrap {
-    height: 18px;
-    border-radius: 999px;
-    background: #120f22;
-    border: 1px solid #2c2450;
-    overflow: hidden;
-    margin-top: 4px;
+    height: 18px; border-radius: 999px; background: #120f22;
+    border: 1px solid #2c2450; overflow: hidden; margin-top: 4px;
   }
-  #healthBar {
-    height: 100%;
-    width: 50%;
-    border-radius: 999px;
-    background: var(--green);
-    transition: width .25s, background .25s;
-  }
+  #healthBar { height: 100%; width: 50%; border-radius: 999px; background: var(--green); transition: width .25s, background .25s; }
 
-  .svc {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
+  .svc { display: flex; flex-wrap: wrap; gap: 8px; }
   .pill {
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    color: var(--dim);
-    background: rgba(0,0,0,.25);
+    font-size: 11px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--dim); background: rgba(0,0,0,.25);
   }
   .pill.on { color: var(--green); border-color: rgba(91,240,122,.35); }
   .pill.off { color: var(--red); border-color: rgba(255,91,91,.35); }
 
-  .controls {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-  }
+  .controls { display: flex; flex-direction: column; gap: 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   label.field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 11px;
-    color: var(--dim);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    flex: 1;
-    min-width: 120px;
+    display: flex; flex-direction: column; gap: 4px; font-size: 11px;
+    color: var(--dim); text-transform: uppercase; letter-spacing: 1px;
+    flex: 1; min-width: 110px;
   }
-  select, button {
-    font: inherit;
-    border-radius: 10px;
-    border: 1px solid var(--line);
-    background: #151228;
-    color: var(--text);
-    padding: 10px 12px;
+  select, button, input[type="password"], input[type="number"] {
+    font: inherit; border-radius: 10px; border: 1px solid var(--line);
+    background: #151228; color: var(--text); padding: 10px 12px;
   }
-  select { width: 100%; }
-  button {
-    cursor: pointer;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    flex: 1;
-    min-width: 110px;
-  }
+  select, input[type="password"], input[type="number"] { width: 100%; }
+  button { cursor: pointer; font-weight: 700; letter-spacing: 0.3px; flex: 1; min-width: 110px; }
   button:active { transform: scale(0.98); }
   button:disabled { opacity: 0.45; cursor: wait; }
   button.primary { background: linear-gradient(135deg, #ff43c8, #7b5cff); border: none; color: #fff; }
@@ -192,26 +111,16 @@
   button.bad  { background: rgba(255,91,91,.12); border-color: rgba(255,91,91,.4); color: var(--red); }
   button.ghost { background: transparent; color: var(--dim); }
 
-  #notice {
-    text-align: center;
-    color: var(--dim);
-    font-size: 13px;
-    min-height: 18px;
-    line-height: 1.5;
-    padding: 2px;
-  }
+  #pad { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px; }
+  #pad button { min-width: 0; padding: 18px 8px; font-size: 18px; user-select: none; touch-action: none; }
+  #pad .sp { visibility: hidden; }
+
+  #notice { text-align: center; color: var(--dim); font-size: 13px; min-height: 18px; line-height: 1.5; padding: 2px; }
   #notice.error { color: var(--red); }
   #notice.hint  { color: var(--yellow); }
   #notice.ok    { color: var(--green); }
   code { background: rgba(255,255,255,.08); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
-
-  footer {
-    margin-top: 8px;
-    padding-top: 10px;
-    font-size: 11px;
-    color: #5b5487;
-    text-align: center;
-  }
+  footer { margin-top: 8px; padding-top: 10px; font-size: 11px; color: #5b5487; text-align: center; }
 </style>
 </head>
 <body>
@@ -224,13 +133,18 @@
     </div>
 
     <div class="card">
-      <div class="hudrow">
+      <div class="hud3">
         <div class="metric"><div class="k">score</div><div class="v" id="scorev">0</div></div>
         <div class="metric"><div class="k">combo</div><div class="v" id="combov">0</div></div>
+        <div class="metric"><div class="k">acc</div><div class="v" id="accv">—</div></div>
       </div>
       <div class="metric" style="margin-top:10px">
         <div class="k">health</div>
         <div id="healthWrap"><div id="healthBar"></div></div>
+      </div>
+      <div class="metric" style="margin-top:10px">
+        <div class="k">juicio</div>
+        <div class="v sub" id="judgev">sick 0 · good 0 · bad 0 · miss 0</div>
       </div>
     </div>
 
@@ -282,6 +196,31 @@
         </label>
       </div>
       <div class="row">
+        <label class="field">pistas
+          <select id="sidesSel">
+            <option value="player" selected>solo jugador</option>
+            <option value="both">ambas (2.x)</option>
+          </select>
+        </label>
+        <label class="field">agente
+          <select id="agentSel">
+            <option value="chart" selected>chart (memoria)</option>
+            <option value="observe">observe (solo lanes)</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label class="field">scale
+          <select id="scaleSel">
+            <option value="auto" selected>auto</option>
+            <option value="0.25">0.25 lento</option>
+            <option value="0.5">0.50</option>
+            <option value="0.7">0.70</option>
+            <option value="1">1.00 tiempo real</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
         <button class="good" id="btnEngineStart" type="button">Arrancar motor</button>
         <button class="bad" id="btnEngineStop" type="button">Parar motor</button>
       </div>
@@ -290,13 +229,25 @@
         <button class="bad" id="btnAgentStop" type="button">Parar agente</button>
       </div>
       <div class="row">
-        <button class="ghost" id="btnDemo" type="button">Demo sin IA (solo motor)</button>
+        <button class="ghost" id="btnDemo" type="button">Demo sin agente (solo motor)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="k" style="font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">pad manual</div>
+      <div id="pad">
+        <span class="sp"></span>
+        <button type="button" data-key="up" aria-label="up">▲</button>
+        <span class="sp"></span>
+        <button type="button" data-key="left" aria-label="left">◀</button>
+        <button type="button" data-key="down" aria-label="down">▼</button>
+        <button type="button" data-key="right" aria-label="right">▶</button>
       </div>
     </div>
 
     <div id="notice" class="hint">Esperando al motor…</div>
   </div>
-  <footer>FNF-Agent · Termux · red local</footer>
+  <footer>FNF-Agent 3.0 · Termux · <span id="bindHint">local</span></footer>
 
 <script>
 (function () {
@@ -305,6 +256,8 @@
   let busy = false;
   let actionBusy = false;
   const TOKEN_KEY = "fnf_web_token";
+  const KEYS = { ArrowLeft: "left", ArrowDown: "down", ArrowUp: "up", ArrowRight: "right" };
+  const held = {};
 
   function getToken() { return localStorage.getItem(TOKEN_KEY) || ""; }
   function setToken(t) {
@@ -328,7 +281,8 @@
       list.forEach((c) => {
         const opt = document.createElement("option");
         opt.value = c.name;
-        opt.textContent = c.name;
+        const p = c.diffs && c.diffs.easy ? c.diffs.easy.player : "";
+        opt.textContent = p ? c.name + " (" + p + " notas)" : c.name;
         sel.appendChild(opt);
       });
       if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
@@ -348,9 +302,7 @@
     const bar = $("healthBar");
     const v = Math.max(0, Math.min(1, Number(h) || 0));
     bar.style.width = (v * 100).toFixed(0) + "%";
-    bar.style.background = v > 0.5 ? "var(--green)"
-                       : v > 0.25 ? "var(--yellow)"
-                       : "var(--red)";
+    bar.style.background = v > 0.5 ? "var(--green)" : v > 0.25 ? "var(--yellow)" : "var(--red)";
   }
 
   function setPill(id, on, label) {
@@ -372,21 +324,31 @@
 
     $("scorev").textContent = st.score != null ? st.score : 0;
     $("combov").textContent = st.combo != null ? st.combo : 0;
+    const acc = Number(st.accuracy);
+    $("accv").textContent = isFinite(acc) ? (acc * 100).toFixed(0) + "%" : "—";
     setHealth(st.health != null ? st.health : 0.5);
+
+    const j = st.judge || {};
+    $("judgev").textContent =
+      "sick " + (j.sick || 0) + " · good " + (j.good || 0) +
+      " · bad " + (j.bad || 0) + " · miss " + (j.miss || 0);
 
     const diffs = ["easy", "normal", "hard"];
     $("songv").textContent = online && st.song
-      ? st.song + (st.diff != null ? " · " + diffs[st.diff] : "")
+      ? st.song + (st.diff != null ? " · " + diffs[st.diff] : "") + (st.sides ? " · " + st.sides : "")
       : "—";
     const t = Number(st.song_time_ms);
     $("timev").textContent = (isFinite(t) && t >= 0 ? (t / 1000).toFixed(2) : "0.00") + " s";
-    $("notesv").textContent = (st.notes_left != null ? st.notes_left : 0) + " / " + (st.notes_total != null ? st.notes_total : 0);
+    const opp = st.notes_opponent != null ? "  (opp " + st.notes_opponent + ")" : "";
+    $("notesv").textContent = (st.notes_left != null ? st.notes_left : 0) + " / " + (st.notes_total != null ? st.notes_total : 0) + opp;
     $("resv").textContent = st.result || "—";
 
     const svc = st.services || {};
     setPill("pEngine", !!svc.engine, "engine");
     setPill("pAgent", !!svc.agent, "agent");
     setPill("pFrame", !!svc.frame, "frame");
+
+    if (st.bind) $("bindHint").textContent = st.bind;
 
     const tokenCard = $("tokenCard");
     if (st.auth === "on") {
@@ -408,13 +370,13 @@
       notice.textContent = "Agente jugando — scale " + (Number(st.scale) || 1).toFixed(2);
     } else if (place === "PLAYING") {
       notice.className = "hint";
-      notice.textContent = "Partida en curso (sin agente) — scale " + (Number(st.scale) || 1).toFixed(2);
+      notice.textContent = "Partida en curso (pad o demo) — scale " + (Number(st.scale) || 1).toFixed(2);
     } else if (place === "RESULT") {
       notice.className = "hint";
       notice.textContent = st.result || "Fin de partida";
     } else {
       notice.className = "hint";
-      notice.textContent = "Listo — elige canción y pulsa ▶ Jugar (agente)";
+      notice.textContent = "Listo — elige canción y pulsa ▶ Jugar";
     }
   }
 
@@ -441,9 +403,8 @@
     ["btnEngineStart","btnEngineStop","btnAgentStart","btnAgentStop","btnDemo"].forEach((id) => {
       $(id).disabled = true;
     });
-    try {
-      await fn();
-    } catch (e) {
+    try { await fn(); }
+    catch (e) {
       $("notice").className = "error";
       $("notice").textContent = "Error: " + (e.message || e);
     } finally {
@@ -452,6 +413,18 @@
         $(id).disabled = false;
       });
     }
+  }
+
+  function gameOpts() {
+    const scale = $("scaleSel").value;
+    const o = {
+      song: $("songSel").value,
+      diff: Number($("diffSel").value),
+      sides: $("sidesSel").value,
+      agent: $("agentSel").value,
+    };
+    if (scale !== "auto") o.scale = Number(scale);
+    return o;
   }
 
   $("btnEngineStart").onclick = () => withAction(async () => {
@@ -468,12 +441,11 @@
   });
 
   $("btnAgentStart").onclick = () => withAction(async () => {
-    const song = $("songSel").value;
-    const diff = Number($("diffSel").value);
-    const res = await post("/api/agent/start", { song, diff });
+    const o = gameOpts();
+    const res = await post("/api/agent/start", o);
     $("notice").className = res.ok ? "ok" : "error";
     $("notice").textContent = res.ok
-      ? "Agente lanzado (" + song + ")"
+      ? "Agente " + o.agent + " (" + o.song + ", " + o.sides + ")"
       : (res.out || res.error || "falló al lanzar agente");
   });
 
@@ -484,19 +456,19 @@
   });
 
   $("btnDemo").onclick = () => withAction(async () => {
-    const song = $("songSel").value;
-    const diff = Number($("diffSel").value);
-    // Asegura motor
+    const o = gameOpts();
     const eng = await post("/api/engine/start");
     if (!eng.ok && !(eng.out || "").includes("ya está")) {
       $("notice").className = "error";
       $("notice").textContent = eng.out || "no se pudo arrancar motor";
       return;
     }
-    const res = await post("/api/game/start", { song, diff, scale: 0.35 });
+    const res = await post("/api/game/start", {
+      song: o.song, diff: o.diff, sides: o.sides, scale: o.scale || 0.35,
+    });
     $("notice").className = res.ok ? "ok" : "error";
     $("notice").textContent = res.ok
-      ? "Demo: " + song + " (sin IA, las notas pasarán solas)"
+      ? "Demo: " + o.song + " — usa el pad o el teclado"
       : (res.error || "error demo");
   });
 
@@ -514,6 +486,35 @@
     $("notice").className = "hint";
     $("notice").textContent = "Token eliminado";
   };
+
+  async function sendKey(key, down) {
+    if (held[key] === down) return;
+    held[key] = down;
+    try { await post("/api/input", { key, down }); } catch (_) {}
+  }
+
+  document.querySelectorAll("#pad button[data-key]").forEach((btn) => {
+    const key = btn.getAttribute("data-key");
+    const start = (ev) => { ev.preventDefault(); sendKey(key, true); };
+    const end = (ev) => { ev.preventDefault(); sendKey(key, false); };
+    btn.addEventListener("pointerdown", start);
+    btn.addEventListener("pointerup", end);
+    btn.addEventListener("pointercancel", end);
+    btn.addEventListener("pointerleave", end);
+  });
+
+  window.addEventListener("keydown", (ev) => {
+    const key = KEYS[ev.key];
+    if (!key || ev.repeat) return;
+    ev.preventDefault();
+    sendKey(key, true);
+  });
+  window.addEventListener("keyup", (ev) => {
+    const key = KEYS[ev.key];
+    if (!key) return;
+    ev.preventDefault();
+    sendKey(key, false);
+  });
 
   setInterval(tickFrame, 100);
   setInterval(async () => {
