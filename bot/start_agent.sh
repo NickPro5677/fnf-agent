@@ -2,8 +2,8 @@
 # ============================================================
 # fnf-agent/bot/start_agent.sh
 # Arranca el agente (bot_loop.js) en background.
-# Variables: FNF_SONG (tutorial|bopeebo|test), FNF_DIFF (0..2),
-#            FNF_SCALE (override del factor de tiempo).
+# Variables: FNF_SONG, FNF_DIFF (0..2), FNF_SCALE, FNF_SIDES (player|both),
+#            FNF_AGENT (chart|observe).
 # ============================================================
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -24,5 +24,5 @@ fi
 
 nohup node "$BOT_JS" >>"$LOG_FILE" 2>&1 &
 echo $! > "$PID_FILE"
-echo "[agent] arrancado pid $(cat "$PID_FILE") (song=${FNF_SONG:-tutorial} diff=${FNF_DIFF:-0} scale=${FNF_SCALE:-auto})"
+echo "[agent] arrancado pid $(cat "$PID_FILE") (song=${FNF_SONG:-tutorial} diff=${FNF_DIFF:-0} sides=${FNF_SIDES:-player} agent=${FNF_AGENT:-chart} scale=${FNF_SCALE:-auto})"
 echo "[agent] logs: $LOG_FILE"
