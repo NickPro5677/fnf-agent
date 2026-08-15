@@ -1,162 +1,110 @@
-// ============================================================
-// fnf-agent/mcp/fnf-mcp.js
-// Servidor MCP (stdio). Expone las herramientas del agente:
-//   - observe       : estado simbólico del motor (distancias por carril)
-//   - input.press   : inyecta una tecla (flecha) con duración
-//   - game.start    : inicia sesión (song, diff, scale)
-//   - game.status   : estado completo del motor
-//   - song.chart    : lista de notas desde el chart oficial
-// Puente: motor FNF (unix socket).
-// ============================================================
+// Servidor MCP (stdio). Clientes externos; el bot local usa el socket directo.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import net from "node:net";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = process.env.FNF_ROOT || path.resolve(__dirname, "..");
-const SOCKET = process.env.FNF_SOCK || path.join(ROOT, "env", "run", "engine.sock");
-const CHARTS = process.env.FNF_CHARTS_DIR || path.join(ROOT, "env", "charts");
-
-// ---------- puente al motor ----------
-function engineCall(payload, timeoutMs = 5000) {
-  return new Promise((resolve, reject) => {
-    const sock = net.createConnection(SOCKET);
-    let buf = "";
-    const to = setTimeout(() => {
-      sock.destroy();
-      reject(new Error(`engine timeout (${payload.cmd})`));
-    }, timeoutMs);
-    sock.on("connect", () => sock.write(JSON.stringify(payload) + "\n"));
-    sock.on("data", (d) => {
-      buf += d.toString();
-      if (buf.includes("\n")) {
-        clearTimeout(to);
-        sock.end();
-        const line = buf.split("\n")[0];
-        resolve(JSON.parse(line || "{}"));
-      }
-    });
-    sock.on("error", (e) => {
-      clearTimeout(to);
-      reject(new Error(`engine socket: ${e.message}`));
-    });
-  });
-}
-
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+import { engineCall, sleep } from "../bot/lib/engine.js";
+import { loadChartFile, parseNotes, listCharts } from "../bot/lib/chart.js";
 
 const server = new McpServer({
   name: "fnf-mcp",
-  version: "1.0.0",
+  version: "3.0.0",
 });
 
-// ---------- observe ----------
+function text(obj) {
+  return { content: [{ type: "text", text: typeof obj === "string" ? obj : JSON.stringify(obj) }] };
+}
+
+function err(e) {
+  return text(`error: ${e.message}`);
+}
+
 server.tool(
   "observe",
-  "Devuelve el estado simbólico del motor: distancia de la flecha por carril (dist en ms, -1 = sin flecha), combo, salud, canción, tiempo y lugar.",
-  { },
+  "Estado del motor: tiempo, juicios, lanes (ms), holds (ms de sustain restante), health, sides.",
+  {},
   async () => {
-    try {
-      const st = await engineCall({ cmd: "status" });
-      return {
-        content: [
-          { type: "text", text: JSON.stringify({ ...st }) },
-        ],
-      };
-    } catch (e) {
-      return { content: [{ type: "text", text: `error: ${e.message}` }] };
-    }
+    try { return text(await engineCall({ cmd: "status" })); } catch (e) { return err(e); }
   },
 );
 
-// ---------- input.press ----------
+server.tool(
+  "game.status",
+  "Alias de observe. Estado completo del motor.",
+  {},
+  async () => {
+    try { return text(await engineCall({ cmd: "status" })); } catch (e) { return err(e); }
+  },
+);
+
 server.tool(
   "input.press",
-  "Pulsa una tecla durante `duration_ms` milisegundos. key: left|down|up|right",
+  "Pulsa una tecla durante duration_ms. key: left|down|up|right",
   { key: z.string(), duration_ms: z.number().optional() },
   async ({ key, duration_ms = 120 }) => {
     try {
       await engineCall({ cmd: "key", key, down: true });
       await sleep(Math.max(20, Number(duration_ms)));
       await engineCall({ cmd: "key", key, down: false });
-      return { content: [{ type: "text", text: JSON.stringify({ ok: true, key, duration_ms }) }] };
-    } catch (e) {
-      return { content: [{ type: "text", text: `error: ${e.message}` }] };
-    }
+      return text({ ok: true, key, duration_ms });
+    } catch (e) { return err(e); }
   },
 );
 
-// ---------- input.key ----------
 server.tool(
   "input.key",
-  "Suelta o mantiene una tecla (left|down|up|right). `down`: true = pulsada, false = soltada. Control fino para sustains.",
+  "Suelta o mantiene una tecla. down: true|false. Control fino de sustains.",
   { key: z.string(), down: z.boolean() },
   async ({ key, down }) => {
     try {
       await engineCall({ cmd: "key", key, down });
-      return { content: [{ type: "text", text: JSON.stringify({ ok: true, key, down }) }] };
-    } catch (e) {
-      return { content: [{ type: "text", text: `error: ${e.message}` }] };
-    }
+      return text({ ok: true, key, down });
+    } catch (e) { return err(e); }
   },
 );
 
-// ---------- game.start ----------
 server.tool(
   "game.start",
-  "Inicia una sesión de juego. song: nombre del chart (tutorial, bopeebo). diff: 0 easy, 1 normal, 2 hard. scale: factor de tiempo (0.25 = modo lento).",
-  { song: z.string(), diff: z.number().optional(), scale: z.number().optional() },
-  async ({ song, diff = 0, scale = 0.25 }) => {
+  "Inicia sesión. song, diff 0-2, scale, sides=player|both.",
+  {
+    song: z.string(),
+    diff: z.number().optional(),
+    scale: z.number().optional(),
+    sides: z.string().optional(),
+  },
+  async ({ song, diff = 0, scale = 0.25, sides = "player" }) => {
     try {
-      const res = await engineCall({ cmd: "start", song, diff, scale });
-      return { content: [{ type: "text", text: JSON.stringify(res) }] };
-    } catch (e) {
-      return { content: [{ type: "text", text: `error: ${e.message}` }] };
-    }
+      return text(await engineCall({ cmd: "start", song, diff, scale, sides }));
+    } catch (e) { return err(e); }
   },
 );
 
-// ---------- game.status ----------
 server.tool(
-  "game.status",
-  "Estado actual del motor: canción, tiempo, combo, health, lugar (menu/playing/result).",
+  "song.list",
+  "Lista charts disponibles con recuentos player/opponent por dificultad.",
   {},
   async () => {
-    try {
-      const res = await engineCall({ cmd: "status" });
-      return { content: [{ type: "text", text: JSON.stringify(res) }] };
-    } catch (e) {
-      return { content: [{ type: "text", text: `error: ${e.message}` }] };
-    }
+    try { return text({ charts: listCharts() }); } catch (e) { return err(e); }
   },
 );
 
-// ---------- song.chart ----------
 server.tool(
   "song.chart",
-  "Lista las notas próximas del chart oficial de la canción (hasta `limit`). Formato: [tiempo_ms, carril 0-3, longitud_sustain_ms].",
-  { song: z.string(), diff: z.number().optional(), limit: z.number().optional() },
-  async ({ song, diff = 2, limit = 10 }) => {
+  "Notas del chart: {t,lane,l,side}. side=player|opponent|all (default player).",
+  {
+    song: z.string(),
+    diff: z.number().optional(),
+    side: z.string().optional(),
+    limit: z.number().optional(),
+  },
+  async ({ song, diff = 0, side = "player", limit = 10 }) => {
     try {
-      const file = `${CHARTS}/${song}-chart.json`;
-      if (!fs.existsSync(file)) {
-        return { content: [{ type: "text", text: `chart no existe: ${file}` }] };
-      }
-      const chart = JSON.parse(fs.readFileSync(file, "utf8"));
-      const diffKey = ["easy", "normal", "hard"][Math.min(diff, 2)];
-      const notes = (chart.notes?.[diffKey] || []).map((n) => [n.t, n.d % 4, n.l ?? 0]);
-      return {
-        content: [{ type: "text", text: JSON.stringify(notes.slice(0, limit)) }],
-      };
-    } catch (e) {
-      return { content: [{ type: "text", text: `error: ${e.message}` }] };
-    }
+      const chart = loadChartFile(song);
+      const parseSides = side === "player" ? "player" : "both";
+      let notes = parseNotes(chart, diff, parseSides);
+      if (side === "opponent") notes = notes.filter((n) => n.side === "opponent");
+      if (side === "player") notes = notes.filter((n) => n.side === "player");
+      return text(notes.slice(0, limit));
+    } catch (e) { return err(e); }
   },
 );
 
