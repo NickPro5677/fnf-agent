@@ -1,22 +1,18 @@
 #!/usr/bin/env python3
 # ============================================================
 # fnf-agent/env/fnf_engine.py
-# Motor FNF compatible con charts oficiales (formato v2.0.0).
-# Renderiza la highway de 4 carriles con PIL y simula gameplay
-# segun teclas inyectadas por UNIX socket (el MCP lo hace).
+# Motor FNF (charts oficiales v2.0.0). Highway de 4 carriles (PIL)
+# y simulación según teclas inyectadas por UNIX socket.
+#
+# sides=player (default): d 0-3 jugador, d 4-7 oponente (auto-hit, no puntúa).
+# sides=both: todas las notas son jugables (comportamiento 2.x).
 #
 # Estados: menu -> playing -> result
-# IPC (unix socket, lineas JSON, respuestas JSON line-by-line):
-#   {"cmd":"start","song":"tutorial","diff":2,"scale":1}
+# IPC (unix socket, JSON por línea):
+#   {"cmd":"start","song":"tutorial","diff":0,"scale":1,"sides":"player"}
 #   {"cmd":"key","key":"left","down":true}
-#   {"cmd":"status"}  /  {"cmd":"quit"}
-# Frame de video: $FNF_RENDER_DIR/latest.png (siempre sobrescribe)
-#
-# Notas sostenidas (sustain, campo "l" de los charts):
-#   - La tecla debe mantenerse pulsada `l` ms después del golpe.
-#   - Soltar antes = cancel + reset de combo.
-#   - Completar el sustain da puntos extra.
-# scrollSpeed del chart afecta a la velocidad visual de la nota.
+#   {"cmd":"status"}  /  {"cmd":"list"}  /  {"cmd":"quit"}
+# Frame: $FNF_RENDER_DIR/latest.png
 # ============================================================
 import json
 import os
@@ -26,45 +22,123 @@ import time
 import PIL.Image as Image
 import PIL.ImageDraw as ImageDraw
 
+ROOT = os.path.dirname(os.path.abspath(__file__))
+CHARTS_DIR = os.environ.get("FNF_CHARTS_DIR", os.path.join(ROOT, "charts"))
+RENDER_DIR = os.environ.get("FNF_RENDER_DIR", os.path.join(ROOT, "render"))
+RUN_DIR = os.environ.get("FNF_RUN_DIR", os.path.join(ROOT, "run"))
+SOCK_PATH = os.environ.get("FNF_SOCK", os.path.join(RUN_DIR, "engine.sock"))
+
 W, H = 640, 800
 TOP_Y = 200
-HIT_Y = 560
-TRAVEL_MS = 1500.0  # tiempo base de viaje (afinado por scrollSpeed)
-FPS = 15
+HIT_Y = int(os.environ.get("FNF_HIT_Y", 560))
+TRAVEL_MS = 1500.0
+
+
+def _clamp_fps(raw):
+    try:
+        v = int(raw)
+    except (TypeError, ValueError):
+        v = 15
+    return max(8, min(30, v))
+
+
+FPS = _clamp_fps(os.environ.get("FNF_FPS", 15))
 TICK_MS = 1000.0 / FPS
 
 LANES = 4
 LANE_XS = [200, 280, 360, 440]
 LANE_COLOR = [(196, 94, 201), (46, 169, 229), (120, 230, 92), (250, 103, 92)]
+LANE_OPP = [(90, 50, 95), (30, 80, 110), (50, 110, 50), (120, 55, 50)]
 LANE_NAMES = ["left", "down", "up", "right"]
 
-HIT_WINDOW_GOOD = 150  # ms: ventana de golpe bueno
-HIT_WINDOW_MISS = 300  # ms: la nota muere si pasa de aquí sin pulsar
+# Ventanas de juicio (ms de canción). Aprox. FNF, no clon oficial.
+HIT_SICK = 45
+HIT_GOOD = 90
+HIT_BAD = 135
+HIT_MISS = 180
+
+SCORE_SICK = 350
+SCORE_GOOD = 200
+SCORE_BAD = 100
+SCORE_SUSTAIN = 50
+HEALTH_SICK = 0.023
+HEALTH_GOOD = 0.016
+HEALTH_BAD = 0.008
+HEALTH_MISS = 0.047
+HEALTH_SUSTAIN_BREAK = 0.055
+
+DIFF_KEYS = ("easy", "normal", "hard")
 
 
 def arrow_points(x, y, lane, s=20):
     h = 0.866 * s
-    if lane == 0:      # izquierda
+    if lane == 0:
         return [(x - s, y), (x + s, y - h), (x + s, y + h)]
-    if lane == 3:      # derecha
+    if lane == 3:
         return [(x + s, y), (x - s, y - h), (x - s, y + h)]
-    if lane == 2:      # arriba
+    if lane == 2:
         return [(x, y - s), (x - h, y + s), (x + h, y + s)]
-    return [(x, y + s), (x - h, y - s), (x + h, y - s)]  # abajo
+    return [(x, y + s), (x - h, y - s), (x + h, y - s)]
+
+
+def note_side(d):
+    return "player" if (int(d) % 8) < 4 else "opponent"
+
+
+def summarize_chart(chart):
+    notes = chart.get("notes") or {}
+    diffs = {}
+    for key in DIFF_KEYS:
+        raw = notes.get(key) or []
+        if not isinstance(raw, list):
+            continue
+        player = sum(1 for n in raw if note_side(n.get("d", 0)) == "player")
+        diffs[key] = {
+            "total": len(raw),
+            "player": player,
+            "opponent": len(raw) - player,
+        }
+    scrolls = chart.get("scrollSpeed", {})
+    if isinstance(scrolls, dict):
+        scroll = scrolls.get("easy") or scrolls.get("base") or 1.0
+    else:
+        scroll = 1.0
+    return {"diffs": diffs, "scroll": float(scroll)}
+
+
+def list_charts(charts_dir=None):
+    d = charts_dir or CHARTS_DIR
+    out = []
+    if not os.path.isdir(d):
+        return out
+    for fname in sorted(os.listdir(d)):
+        if not fname.endswith("-chart.json"):
+            continue
+        name = fname[: -len("-chart.json")]
+        try:
+            with open(os.path.join(d, fname)) as fh:
+                chart = json.load(fh)
+        except (OSError, json.JSONDecodeError):
+            continue
+        info = summarize_chart(chart)
+        info["name"] = name
+        out.append(info)
+    return out
 
 
 class Engine:
     def __init__(self):
         self.song = ""
-        self.notes = []          # lista de diccionarios (ver start)
+        self.notes = []
         self.scroll_speed = 1.0
         self.song_len_ms = 1
         self.scale = 1.0
         self.diff = 0
+        self.sides = "player"
         self.start_ms = 0
         self.now_ms = 0
         self.game_time = 0
-        self.place = "menu"      # menu | playing | over
+        self.place = "menu"
         self.combo = 0
         self.max_combo = 0
         self.score = 0
@@ -73,36 +147,50 @@ class Engine:
         self.last_result = ""
         self.error = ""
         self.frame_seq = 0
-        self.sick = self.good = self.miss = 0
+        self.events_ignored = 0
+        self.judge = {"sick": 0, "good": 0, "bad": 0, "miss": 0}
 
-    # ---------------- sesion ----------------
-    def start(self, song, diff=2, scale=1.0):
+    def start(self, song, diff=2, scale=1.0, sides="player"):
         diff = max(0, min(2, int(diff) if isinstance(diff, (int, float)) else 2))
+        sides = "both" if str(sides).lower() == "both" else "player"
         path = os.path.join(CHARTS_DIR, f"{song}-chart.json")
         if not os.path.exists(path):
             self.error = f"chart no encontrado: {path}"
             return False
         with open(path) as f:
             chart = json.load(f)
-        diff_key = ["easy", "normal", "hard"][diff]
+        diff_key = DIFF_KEYS[diff]
         raw = chart.get("notes", {}).get(diff_key, [])
         self.song = song
         self.diff = diff
+        self.sides = sides
         scrolls = chart.get("scrollSpeed", {})
         base_scroll = scrolls.get("base", 1.0) if isinstance(scrolls, dict) else 1.0
-        self.scroll_speed = float(scrolls.get(diff_key, base_scroll) if isinstance(scrolls, dict) else 1.0)
+        self.scroll_speed = float(
+            scrolls.get(diff_key, base_scroll) if isinstance(scrolls, dict) else 1.0
+        )
         self.scale = max(0.05, float(scale))
+        self.events_ignored = len(chart.get("events") or [])
         self.notes = []
         for n in sorted(raw, key=lambda n: n.get("t", 0)):
+            d = int(n.get("d", 0))
+            side = note_side(d)
+            counts = sides == "both" or side == "player"
             self.notes.append({
                 "t": float(n["t"]),
-                "lane": int(n.get("d", 0)) % LANES,
+                "lane": d % LANES,
                 "l": float(n.get("l", 0)),
-                "hold_end": None,   # instante (game_time) del final del sustain
-                "status": "wait",   # wait | held | done | miss
+                "side": side,
+                "counts": counts,
+                "hold_end": None,
+                "status": "wait",
             })
-        self.song_len_ms = (self.notes[-1]["t"] + (self.notes[-1]["l"] or 0) if self.notes else 0) + 5000
-        self.start_ms = self.now_ms + 2000   # cuenta regresiva real de 2 s
+        last_t = 0.0
+        if self.notes:
+            last = self.notes[-1]
+            last_t = last["t"] + (last["l"] or 0)
+        self.song_len_ms = last_t + 5000
+        self.start_ms = self.now_ms + 2000
         self.game_time = 0
         self.combo = 0
         self.max_combo = 0
@@ -111,7 +199,7 @@ class Engine:
         self.keys = [False] * LANES
         self.last_result = ""
         self.error = ""
-        self.sick = self.good = self.miss = 0
+        self.judge = {"sick": 0, "good": 0, "bad": 0, "miss": 0}
         self.place = "playing"
         return True
 
@@ -121,16 +209,46 @@ class Engine:
     def song_time(self):
         return self.game_time if self.place == "playing" else -1
 
-    # ---------------- simulacion ----------------
-    def _add_key(self):
+    def notes_player(self):
+        return [n for n in self.notes if n["counts"]]
+
+    def notes_opponent_visual(self):
+        return [n for n in self.notes if not n["counts"]]
+
+    def accuracy(self):
+        j = self.judge
+        judged = j["sick"] + j["good"] + j["bad"] + j["miss"]
+        if judged <= 0:
+            return 1.0
+        return (j["sick"] + 0.75 * j["good"] + 0.37 * j["bad"]) / judged
+
+    def _hit(self, kind):
         self.combo += 1
         self.max_combo = max(self.max_combo, self.combo)
-        self.score += 50 + 10 * self.combo
-        self.health = min(1.0, self.health + 0.02)
+        if kind == "sick":
+            self.score += SCORE_SICK + 10 * self.combo
+            self.health = min(1.0, self.health + HEALTH_SICK)
+        elif kind == "good":
+            self.score += SCORE_GOOD + 10 * self.combo
+            self.health = min(1.0, self.health + HEALTH_GOOD)
+        else:
+            self.score += SCORE_BAD + 5 * self.combo
+            self.health = min(1.0, self.health + HEALTH_BAD)
+        self.judge[kind] += 1
 
-    def _miss(self, penalty=0.06):
+    def _miss(self, penalty=HEALTH_MISS):
         self.combo = 0
         self.health = max(0.0, self.health - penalty)
+        self.judge["miss"] += 1
+
+    def _judge_kind(self, off):
+        if off <= HIT_SICK:
+            return "sick"
+        if off <= HIT_GOOD:
+            return "good"
+        if off <= HIT_BAD:
+            return "bad"
+        return None
 
     def update(self, dt_ms):
         self.now_ms += dt_ms
@@ -143,62 +261,67 @@ class Engine:
         for note in self.notes:
             st_ = note["status"]
 
-            # notas en sustain: requiere la tecla mantenida
+            if not note["counts"]:
+                if st_ == "wait" and st >= note["t"]:
+                    note["status"] = "auto"
+                continue
+
             if st_ == "held":
                 if self.keys[note["lane"]]:
                     if self.game_time >= note["hold_end"]:
                         note["status"] = "done"
-                        self.score += 100
+                        self.score += SCORE_SUSTAIN
                     continue
-                # soltaste antes: sustain roto -> miss
                 note["status"] = "miss"
-                self.miss += 1
-                self._miss(0.08)
+                self._miss(HEALTH_SUSTAIN_BREAK)
                 continue
 
             if st_ != "wait":
                 continue
 
             t = note["t"]
-            # fuera de la ventana de miss -> muere sin golpear
-            if st - t > HIT_WINDOW_MISS and st - t > 0:
+            lag = t - st
+            if st - t > HIT_MISS:
                 note["status"] = "miss"
-                self.miss += 1
                 self._miss()
                 continue
 
             held = self.keys[note["lane"]]
-            if held and HIT_WINDOW_GOOD >= abs(t - st) >= 0:
+            if not held:
+                continue
+            off = abs(lag)
+            kind = self._judge_kind(off)
+            if kind:
                 note["status"] = "held" if note["l"] > 0 else "done"
                 if note["l"] > 0:
                     note["hold_end"] = t + note["l"]
-                self._add_key()
-                off = abs(t - st)
-                if off <= 40:
-                    self.sick += 1
-                else:
-                    self.good += 1
-            elif held and st >= t:  # tecla pulsada pero ya pasó su ventana buena
-                if abs(t - st) <= HIT_WINDOW_MISS:
-                    note["status"] = "miss"
-                    self.miss += 1
-                    self._miss(0.04)
+                self._hit(kind)
+            elif st >= t and off <= HIT_MISS:
+                note["status"] = "miss"
+                self._miss()
 
         if self.health <= 0:
             self.place = "result"
-            self.last_result = f"DEFEAT score={self.score} combo={self.max_combo} sick={self.sick} good={self.good} miss={self.miss}"
+            self.last_result = self._format_result("DEFEAT")
         elif st > self.song_len_ms:
             self.place = "result"
-            self.last_result = f"WIN score={self.score} combo={self.max_combo} sick={self.sick} good={self.good} miss={self.miss}"
+            self.last_result = self._format_result("WIN")
 
-    # ---------------- render ----------------
+    def _format_result(self, kind):
+        j = self.judge
+        acc = self.accuracy() * 100
+        return (
+            f"{kind} score={self.score} combo={self.max_combo} "
+            f"sick={j['sick']} good={j['good']} bad={j['bad']} miss={j['miss']} "
+            f"acc={acc:.1f}%"
+        )
+
     def render(self):
         self.frame_seq += 1
         img = Image.new("RGB", (W, H), (16, 14, 22))
         dr = ImageDraw.Draw(img)
         st = self.song_time()
 
-        # gradient de fondo
         for i in range(10):
             v = 10 + i * 20
             dr.rectangle([0, i * H // 10, W, (i + 1) * H // 10], fill=(v, v - 6, v + 4))
@@ -210,10 +333,12 @@ class Engine:
             save_frame(img)
             return
 
-        # highway
-        dr.rectangle([LANE_XS[0] - 30, TOP_Y - 10, LANE_XS[-1] + 30, HIT_Y + 50], outline=(70, 62, 88), width=3)
+        dr.rectangle(
+            [LANE_XS[0] - 30, TOP_Y - 10, LANE_XS[-1] + 30, HIT_Y + 50],
+            outline=(70, 62, 88),
+            width=3,
+        )
 
-        # sustains: barras del sustain ANTES de las teclas
         for note in self.notes:
             if note["status"] not in ("wait", "held"):
                 continue
@@ -221,13 +346,12 @@ class Engine:
                 continue
             lag0 = note["t"] - st
             lag1 = (note["t"] + note["l"]) - st
-            # cabeza: si lo mantienes, en la línea; si aún no, en su flecha
             head_y = HIT_Y if note["status"] == "held" else self.note_y(lag0)
-            tail_y = self.note_y(lag1)   # extremo del sustain
+            tail_y = self.note_y(lag1)
             if head_y is None or tail_y is None:
                 continue
             x = LANE_XS[note["lane"]]
-            c = LANE_COLOR[note["lane"]]
+            c = LANE_COLOR[note["lane"]] if note["counts"] else LANE_OPP[note["lane"]]
             top = min(head_y, tail_y)
             bot = max(head_y, tail_y)
             if top < TOP_Y:
@@ -236,24 +360,29 @@ class Engine:
                 bot = HIT_Y
             if top >= bot:
                 continue
-            dr.rectangle([x - 6, top, x + 6, bot], fill=c)
+            w = 6 if note["counts"] else 3
+            dr.rectangle([x - w, top, x + w, bot], fill=c)
 
-        # notas (flechas)
         for note in self.notes:
             if note["status"] not in ("wait", "held"):
                 continue
             lag = note["t"] - st
-            if lag > self.travel_ms() * 1.1 or lag < -HIT_WINDOW_MISS * 2.2:
+            if lag > self.travel_ms() * 1.1 or lag < -HIT_MISS * 2.2:
                 continue
             y = self.note_y(lag)
             if y is None:
                 continue
             x = LANE_XS[note["lane"]]
-            c = LANE_COLOR[note["lane"]]
-            # flecha rellana de color, contorno blanco
-            dr.polygon(arrow_points(x, y, note["lane"], 16), fill=c, outline=(255, 255, 255))
+            if note["counts"]:
+                c = LANE_COLOR[note["lane"]]
+                outline = (255, 255, 255)
+                size = 16
+            else:
+                c = LANE_OPP[note["lane"]]
+                outline = (90, 88, 100)
+                size = 13
+            dr.polygon(arrow_points(x, y, note["lane"], size), fill=c, outline=outline)
 
-        # receptores
         for li in range(LANES):
             x = LANE_XS[li]
             c = LANE_COLOR[li]
@@ -262,25 +391,28 @@ class Engine:
             else:
                 dr.polygon(arrow_points(x, HIT_Y, li, 22), fill=(55, 50, 70), outline=c)
 
-        # health
         hw = W - 100
         dr.rectangle([50, H - 64, 50 + hw, H - 44], outline=(140, 140, 150), width=2)
         dr.rectangle([54, H - 60, 54 + int(hw * self.health), H - 48], fill=(70, 210, 90))
 
-        # hud
+        j = self.judge
         dr.text((20, 16), f"COMBO {self.combo}  SCORE {self.score}", fill=(255, 255, 255))
-        dr.text((20, 40), f"{self.song}  t={(st if st else 0) / 1000:.2f}s", fill=(220, 220, 220))
-        dr.text((20, 60), f"judge  sick={self.sick} good={self.good} miss={self.miss}",
-                fill=(180, 180, 190))
+        dr.text((20, 40), f"{self.song}  t={(st if st else 0) / 1000:.2f}s  {self.sides}", fill=(220, 220, 220))
+        dr.text(
+            (20, 60),
+            f"sick={j['sick']} good={j['good']} bad={j['bad']} miss={j['miss']}  acc={self.accuracy()*100:.0f}%",
+            fill=(180, 180, 190),
+        )
 
         if self.place == "result":
-            dr.rectangle([60, 340, W - 60, 460], fill=(20, 18, 28))
-            dr.text((90, 380), self.last_result, fill=(255, 220, 90))
+            dr.rectangle([40, 330, W - 40, 480], fill=(20, 18, 28))
+            dr.text((50, 370), self.last_result[:42], fill=(255, 220, 90))
+            if len(self.last_result) > 42:
+                dr.text((50, 400), self.last_result[42:90], fill=(255, 220, 90))
 
         save_frame(img)
 
     def note_y(self, lag):
-        """y del carril para un lag (ms respecto de la nota). None si ausente."""
         t = self.travel_ms()
         frac = (t - lag) / t
         y = TOP_Y + frac * (HIT_Y - TOP_Y)
@@ -289,55 +421,91 @@ class Engine:
         return None
 
     def lane_distance(self):
-        """distancia en ms de la flecha más cercana por carril (0 = en la línea, -1 sin nota)."""
         st = self.song_time()
         out = {}
         for li, name in enumerate(LANE_NAMES):
             d = None
             for note in self.notes:
-                if note["status"] != "wait":
+                if note["status"] != "wait" or not note["counts"]:
                     continue
                 if note["lane"] != li:
                     continue
                 lag = note["t"] - st
-                if -HIT_WINDOW_MISS * 1.2 <= lag <= self.travel_ms() * 1.1:
+                if -HIT_MISS * 1.2 <= lag <= self.travel_ms() * 1.1:
                     if d is None or abs(lag) < abs(d):
                         d = lag
             out[name] = -1 if d is None else round(d, 1)
         return out
 
-    # ---------------- ipc ----------------
+    def holds(self):
+        st = self.song_time()
+        out = {name: -1 for name in LANE_NAMES}
+        if self.place != "playing":
+            return out
+        for note in self.notes:
+            if note["status"] != "held" or not note["counts"]:
+                continue
+            rem = note["hold_end"] - st
+            name = LANE_NAMES[note["lane"]]
+            if out[name] < 0 or rem > out[name]:
+                out[name] = rem
+        return {k: (-1 if v < 0 else round(v, 1)) for k, v in out.items()}
+
     def handle(self, msg):
         cmd = msg.get("cmd")
         if cmd == "start":
-            ok = self.start(msg.get("song"), msg.get("diff", 2), msg.get("scale", 1.0))
-            return {"ok": ok, "song": self.song, "place": self.place, "error": self.error, "scale": self.scale}
+            ok = self.start(
+                msg.get("song"),
+                msg.get("diff", 2),
+                msg.get("scale", 1.0),
+                msg.get("sides", "player"),
+            )
+            return {
+                "ok": ok,
+                "song": self.song,
+                "place": self.place,
+                "error": self.error,
+                "scale": self.scale,
+                "sides": self.sides,
+            }
         if cmd == "key":
             k = msg.get("key")
             if k in LANE_NAMES:
                 self.keys[LANE_NAMES.index(k)] = bool(msg.get("down"))
             return {"ok": True}
         if cmd == "status":
-            return {
-                "place": self.place,
-                "song": self.song,
-                "diff": self.diff,
-                "song_time_ms": self.song_time(),
-                "scale": self.scale,
-                "combo": self.combo,
-                "max_combo": self.max_combo,
-                "score": self.score,
-                "health": round(self.health, 3),
-                "notes_total": len(self.notes),
-                "notes_left": sum(1 for n in self.notes if n["status"] == "wait"),
-                "lanes": self.lane_distance(),
-                "result": self.last_result,
-                "error": self.error,
-                "frame_seq": self.frame_seq,
-            }
+            return self.status_dict()
+        if cmd == "list":
+            return {"songs": list_charts()}
         if cmd == "quit":
             return {"ok": True}
         return {"ok": False, "error": "unknown_cmd"}
+
+    def status_dict(self):
+        player = self.notes_player()
+        return {
+            "place": self.place,
+            "song": self.song,
+            "diff": self.diff,
+            "sides": self.sides,
+            "song_time_ms": self.song_time(),
+            "scale": self.scale,
+            "combo": self.combo,
+            "max_combo": self.max_combo,
+            "score": self.score,
+            "health": round(self.health, 3),
+            "accuracy": round(self.accuracy(), 4),
+            "judge": dict(self.judge),
+            "notes_total": len(player),
+            "notes_left": sum(1 for n in player if n["status"] == "wait"),
+            "notes_opponent": len(self.notes_opponent_visual()),
+            "lanes": self.lane_distance(),
+            "holds": self.holds(),
+            "events_ignored": self.events_ignored,
+            "result": self.last_result,
+            "error": self.error,
+            "frame_seq": self.frame_seq,
+        }
 
 
 def save_frame(img):
@@ -414,10 +582,5 @@ def main():
 
 
 if __name__ == "__main__":
-    ROOT = os.path.dirname(os.path.abspath(__file__))
-    CHARTS_DIR = os.environ.get("FNF_CHARTS_DIR", os.path.join(ROOT, "charts"))
-    RENDER_DIR = os.environ.get("FNF_RENDER_DIR", os.path.join(ROOT, "render"))
-    RUN_DIR = os.environ.get("FNF_RUN_DIR", os.path.join(ROOT, "run"))
-    SOCK_PATH = os.environ.get("FNF_SOCK", os.path.join(RUN_DIR, "engine.sock"))
-    HIT_Y = int(os.environ.get("FNF_HIT_Y", 560))
+    HIT_Y = int(os.environ.get("FNF_HIT_Y", HIT_Y))
     main()

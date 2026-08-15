@@ -42,14 +42,17 @@ if __name__ == "__main__":
         song = sys.argv[2] if len(sys.argv) > 2 else "tutorial"
         diff = int(sys.argv[3]) if len(sys.argv) > 3 else 2
         scale = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
-        print(call({"cmd": "start", "song": song, "diff": diff, "scale": scale}))
+        sides = sys.argv[5] if len(sys.argv) > 5 else "player"
+        print(call({"cmd": "start", "song": song, "diff": diff, "scale": scale, "sides": sides}))
     elif cmd == "status":
         print(call({"cmd": "status"}))
+    elif cmd == "list":
+        print(call({"cmd": "list"}))
     elif cmd == "press":
         key = sys.argv[2]
         print(call({"cmd": "key", "key": key, "down": True}))
     elif cmd == "quit":
         print(call({"cmd": "quit"}))
     else:
-        print("uso: client.py [status|start|press|quit|test]", file=sys.stderr)
+        print("uso: client.py [status|start|press|quit|list|test]", file=sys.stderr)
         sys.exit(1)
