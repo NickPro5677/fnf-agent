@@ -21,6 +21,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Instalar dependencias
-        run: npm ci
+        run: |
+          npm ci
+          python -m pip install pillow
       - name: Revisión rápida
         run: bash check.sh --quick
