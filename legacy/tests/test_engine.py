@@ -94,25 +94,39 @@ def play_like_bot(eng, scale):
     return eng
 
 
+def _cuentas(nombre):
+    import json
+    with open(os.path.join(CHARTS, f"{nombre}-chart.json")) as f:
+        c = json.load(f)
+    easy = c["notes"]["easy"]
+    jug = [n for n in easy if n["d"] % 8 < 4]
+    return len(jug), len(easy) - len(jug), sum(1 for n in jug if n.get("l", 0) > 0), c["scrollSpeed"]["easy"]
+
+
+# Antes se usaban charts oficiales; ahora canciones originales CC0 (ver web/canciones/).
+BO_P, BO_O, BO_S, BO_SCROLL = _cuentas("luz-de-neon")
+TU_P = _cuentas("primer-paso")[0]
+
+
 def main():
-    print("== test_engine 3.0 ==")
+    print("== test_engine 3.0 (legacy) ==")
 
     # 1) carga: player vs both, scroll, sides
-    eng, ok = new_engine("bopeebo", 0, sides="player")
-    check("start bopeebo player ok", ok)
-    check("44 notas jugador easy", len(eng.notes_player()) == 44, f"got {len(eng.notes_player())}")
-    check("44 notas oponente", len(eng.notes_opponent_visual()) == 44, f"got {len(eng.notes_opponent_visual())}")
-    check("sustains jugador", sum(1 for n in eng.notes_player() if n["l"] > 0) == 33)
-    check("scroll easy 1.2", abs(eng.scroll_speed - 1.2) < 1e-9, str(eng.scroll_speed))
+    eng, ok = new_engine("luz-de-neon", 0, sides="player")
+    check("start luz-de-neon player ok", ok)
+    check("notas jugador easy", len(eng.notes_player()) == BO_P, f"got {len(eng.notes_player())}")
+    check("notas oponente", len(eng.notes_opponent_visual()) == BO_O, f"got {len(eng.notes_opponent_visual())}")
+    check("sustains jugador", sum(1 for n in eng.notes_player() if n["l"] > 0) == BO_S and BO_S > 0)
+    check("scroll easy", abs(eng.scroll_speed - BO_SCROLL) < 1e-9, str(eng.scroll_speed))
     check("sides player", eng.sides == "player")
 
-    both, okb = new_engine("bopeebo", 0, sides="both")
+    both, okb = new_engine("luz-de-neon", 0, sides="both")
     check("start both ok", okb)
-    check("both: 88 jugables", len(both.notes_player()) == 88, f"got {len(both.notes_player())}")
+    check("both: todas jugables", len(both.notes_player()) == BO_P + BO_O, f"got {len(both.notes_player())}")
     check("both: 0 oponente visual", len(both.notes_opponent_visual()) == 0)
 
-    tut, _ = new_engine("tutorial", 0)
-    check("tutorial 32 jugador", len(tut.notes_player()) == 32, f"got {len(tut.notes_player())}")
+    tut, _ = new_engine("primer-paso", 0)
+    check("primer-paso jugador", len(tut.notes_player()) == TU_P, f"got {len(tut.notes_player())}")
 
     # 2) parse side
     check("d=0 player", fe.note_side(0) == "player")
@@ -127,16 +141,16 @@ def main():
     check("test sin input -> WIN", eng.last_result.startswith("WIN"), eng.last_result)
     check("test 10 miss", eng.judge["miss"] == 10, str(eng.judge))
 
-    # 4) sin input bopeebo player -> DEFEAT (44 misses)
-    eng, _ = new_engine("bopeebo", 0)
+    # 4) sin input luz-de-neon player -> DEFEAT (44 misses)
+    eng, _ = new_engine("luz-de-neon", 0)
     while eng.place == "playing" and eng.game_time < eng.song_len_ms * 1.2:
         eng.update(30)
-    check("bopeebo sin input -> DEFEAT", eng.last_result.startswith("DEFEAT"), eng.last_result)
+    check("luz-de-neon sin input -> DEFEAT", eng.last_result.startswith("DEFEAT"), eng.last_result)
     check("health agotada", eng.health <= 0, f"health={eng.health}")
-    check("misses solo jugador", eng.judge["miss"] > 0 and eng.judge["miss"] <= 44, str(eng.judge))
+    check("misses solo jugador", eng.judge["miss"] > 0 and eng.judge["miss"] <= BO_P, str(eng.judge))
 
     # 5) oponente no drena si no hay notas jugador que miss-een a la vez...
-    #    las notas jugador de bopeebo sí drenan. Comprobamos auto-hit:
+    #    las notas jugador de luz-de-neon sí drenan. Comprobamos auto-hit:
     auto = [n for n in eng.notes if not n["counts"]]
     passed = [n for n in auto if n["t"] <= eng.game_time]
     check("oponente pasado -> auto, nunca miss",
@@ -153,22 +167,24 @@ def main():
     check("combo máx == total", eng.max_combo == 10, f"combo={eng.max_combo}")
     check("0 miss perfecto", eng.judge["miss"] == 0, str(eng.judge))
 
-    # 7) bopeebo player perfecto
-    eng, _ = new_engine("bopeebo", 0)
+    # 7) luz-de-neon player perfecto
+    eng, _ = new_engine("luz-de-neon", 0)
     play_perfect(eng)
-    check("bopeebo player perfecto -> WIN", eng.last_result.startswith("WIN"), eng.last_result)
-    check("bopeebo sin miss", eng.judge["miss"] == 0, str(eng.judge))
-    check("bopeebo combo 44", eng.max_combo == 44, f"combo={eng.max_combo}")
+    check("luz-de-neon player perfecto -> WIN", eng.last_result.startswith("WIN"), eng.last_result)
+    check("luz-de-neon sin miss", eng.judge["miss"] == 0, str(eng.judge))
+    check("luz-de-neon combo total", eng.max_combo == BO_P, f"combo={eng.max_combo}")
 
     # 8) sustain roto
-    eng, _ = new_engine("bopeebo", 0)
+    eng, _ = new_engine("luz-de-neon", 0)
     broke = False
     while eng.place == "playing" and eng.game_time < eng.song_len_ms:
         st = eng.game_time
+        for i in range(4):  # solo se mantienen las teclas de notas largas en curso
+            eng.keys[i] = any(n["counts"] and n["status"] == "held" and n["lane"] == i for n in eng.notes)
         for n in eng.notes:
             if not n["counts"]:
                 continue
-            if n["status"] == "wait" and abs(n["t"] - st) <= 1:
+            if n["status"] == "wait" and 0 <= st - n["t"] <= 3:
                 eng.keys[n["lane"]] = True
                 if n["l"] > 0 and not broke:
                     eng.keys[n["lane"]] = False
@@ -206,7 +222,7 @@ def main():
     holds = eng.holds()
     check("holds vacío al inicio", all(v == -1 for v in holds.values()), str(holds))
 
-    eng, _ = new_engine("bopeebo", 0)
+    eng, _ = new_engine("luz-de-neon", 0)
     # pulsar el primer sustain jugador en su t
     first = next(n for n in eng.notes if n["counts"] and n["l"] > 0)
     while eng.game_time < first["t"]:
@@ -227,29 +243,29 @@ def main():
     # 12) list_charts
     songs = fe.list_charts(CHARTS)
     names = {s["name"] for s in songs}
-    check("list tutorial/bopeebo/test", names == {"tutorial", "bopeebo", "test"}, str(names))
-    bo = next(s for s in songs if s["name"] == "bopeebo")
-    check("list bopeebo easy player 44", bo["diffs"]["easy"]["player"] == 44, str(bo["diffs"]))
+    check("list primer-paso/luz-de-neon/test", names == {"primer-paso", "luz-de-neon", "test"}, str(names))
+    bo = next(s for s in songs if s["name"] == "luz-de-neon")
+    check("list luz-de-neon easy player", bo["diffs"]["easy"]["player"] == BO_P, str(bo["diffs"]))
 
-    # 13) REGRESIÓN bot tutorial player
-    eng, _ = new_engine("tutorial", 0)
+    # 13) REGRESIÓN bot primer-paso player
+    eng, _ = new_engine("primer-paso", 0)
     eng.scale = 0.6
     play_like_bot(eng, eng.scale)
-    check("bot tutorial -> WIN", eng.last_result.startswith("WIN"), eng.last_result)
-    check("bot tutorial sin miss", eng.judge["miss"] == 0, str(eng.judge))
+    check("bot primer-paso -> WIN", eng.last_result.startswith("WIN"), eng.last_result)
+    check("bot primer-paso sin miss", eng.judge["miss"] == 0, str(eng.judge))
     sust = [n for n in eng.notes_player() if n["l"] > 0]
-    check("bot tutorial sustains done", all(n["status"] == "done" for n in sust),
+    check("bot primer-paso sustains done", all(n["status"] == "done" for n in sust),
           [n["status"] for n in sust])
 
-    # 14) REGRESIÓN bot bopeebo player (33 sustains)
-    eng, _ = new_engine("bopeebo", 0)
+    # 14) REGRESIÓN bot luz-de-neon player (con sustains)
+    eng, _ = new_engine("luz-de-neon", 0)
     eng.scale = 0.6
     play_like_bot(eng, eng.scale)
-    check("bot bopeebo -> WIN", eng.last_result.startswith("WIN"), eng.last_result)
-    check("bot bopeebo sin miss", eng.judge["miss"] == 0, str(eng.judge))
+    check("bot luz-de-neon -> WIN", eng.last_result.startswith("WIN"), eng.last_result)
+    check("bot luz-de-neon sin miss", eng.judge["miss"] == 0, str(eng.judge))
     sust = [n for n in eng.notes_player() if n["l"] > 0]
     broken = [n for n in sust if n["status"] == "miss"]
-    check("bot bopeebo sustains intactos", len(broken) == 0, f"rotos={len(broken)}")
+    check("bot luz-de-neon sustains intactos", len(broken) == 0, f"rotos={len(broken)}")
 
     # 15) accuracy
     eng, _ = new_engine("test", 0)

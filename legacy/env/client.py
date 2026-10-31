@@ -34,12 +34,12 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
     if cmd == "test":
         print("status:", call({"cmd": "status"}))
-        print("start:", call({"cmd": "start", "song": "tutorial", "diff": 2}))
+        print("start:", call({"cmd": "start", "song": "primer-paso", "diff": 2}))
         print("status:", call({"cmd": "status"}))
         print("press left:", call({"cmd": "key", "key": "left", "down": True}))
         print("release:", call({"cmd": "key", "key": "left", "down": False}))
     elif cmd == "start":
-        song = sys.argv[2] if len(sys.argv) > 2 else "tutorial"
+        song = sys.argv[2] if len(sys.argv) > 2 else "primer-paso"
         diff = int(sys.argv[3]) if len(sys.argv) > 3 else 2
         scale = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
         sides = sys.argv[5] if len(sys.argv) > 5 else "player"

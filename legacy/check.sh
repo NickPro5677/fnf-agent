@@ -21,8 +21,8 @@ done
 for f in mcp/fnf-mcp.js bot/bot_loop.js bot/lib/engine.js bot/lib/chart.js bot/agents/chart.js bot/agents/observe.js; do
   node --check "$f" && ok "node --check $f" || bad "node --check $f"
 done
-N=$(node --input-type=module -e "import { loadPlayable } from './bot/lib/chart.js'; console.log(loadPlayable('bopeebo',0,'player').length)")
-[ "$N" = "44" ] && ok "chart.js bopeebo player=44" || bad "chart.js bopeebo player=$N"
+N=$(node --input-type=module -e "import { loadPlayable } from './bot/lib/chart.js'; console.log(loadPlayable('test',0,'player').length)")
+[ "$N" = "10" ] && ok "chart.js test player=10" || bad "chart.js test player=$N"
 
 step "tests del motor (+ regresión del bot)"
 python3 tests/test_engine.py && ok "test_engine" || { bad "test_engine"; }
@@ -47,7 +47,7 @@ if [ ! -S env/run/engine.sock ]; then
 fi
 ST=$(python3 env/client.py status 2>/dev/null)
 echo "$ST" | grep -q "'place'" && ok "motor responde status" || bad "motor status"
-python3 env/client.py list 2>/dev/null | grep -q "bopeebo" && ok "motor list" || bad "motor list"
+python3 env/client.py list 2>/dev/null | grep -q "luz-de-neon" && ok "motor list" || bad "motor list"
 
 step "visor web"
 FNF_WEB_HOST=127.0.0.1 bash web/start_web.sh >/dev/null 2>&1 || true
@@ -68,7 +68,7 @@ OUT=$(timeout 30 node mcp/test-client.mjs 2>&1)
 echo "$OUT" | grep -q "TOOLS:" && ok "tools MCP" || bad "tools MCP: $(echo "$OUT" | tail -1)"
 echo "$OUT" | grep -q "song.list" && ok "tool song.list" || bad "tool song.list"
 echo "$OUT" | grep -q "press: ok" && ok "game end-to-end" || bad "game end-to-end"
-python3 env/client.py start tutorial 0 1 player >/dev/null 2>&1 || true
+python3 env/client.py start primer-paso 0 1 player >/dev/null 2>&1 || true
 
 [ "$FAILED" = 1 ] && { echo; echo "== hay fallos =="; exit 1; }
 echo; echo "== todo ok =="

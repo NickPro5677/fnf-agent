@@ -9,7 +9,7 @@
 #
 # Estados: menu -> playing -> result
 # IPC (unix socket, JSON por línea):
-#   {"cmd":"start","song":"tutorial","diff":0,"scale":1,"sides":"player"}
+#   {"cmd":"start","song":"primer-paso","diff":0,"scale":1,"sides":"player"}
 #   {"cmd":"key","key":"left","down":true}
 #   {"cmd":"status"}  /  {"cmd":"list"}  /  {"cmd":"quit"}
 # Frame: $FNF_RENDER_DIR/latest.png

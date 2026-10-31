@@ -21,13 +21,13 @@ console.log("list:", list.content[0].text.slice(0, 200));
 
 console.log("start:", JSON.stringify(await client.callTool({
   name: "game.start",
-  arguments: { song: "tutorial", diff: 0, scale: 0.25, sides: "player" },
+  arguments: { song: "primer-paso", diff: 0, scale: 0.25, sides: "player" },
 })));
 console.log("status:", (await client.callTool({ name: "game.status", arguments: {} })).content[0].text);
 console.log("observe:", (await client.callTool({ name: "observe", arguments: {} })).content[0].text);
 console.log("chart:", (await client.callTool({
   name: "song.chart",
-  arguments: { song: "tutorial", diff: 0, side: "player", limit: 3 },
+  arguments: { song: "primer-paso", diff: 0, side: "player", limit: 3 },
 })).content[0].text);
 await client.callTool({ name: "input.press", arguments: { key: "left", duration_ms: 100 } });
 console.log("press: ok");

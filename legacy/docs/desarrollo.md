@@ -10,11 +10,11 @@ python3 tests/test_engine.py
 
 `tests/test_engine.py` es el contrato:
 
-- recuentos player/opponent (bopeebo easy = 44/44)
+- recuentos player/opponent (luz-de-neon easy = 44/44)
 - `sides=both` → 88 jugables
 - ventanas sick/good/bad/miss
 - oponente nunca es `miss`
-- `play_like_bot` (LEAD=40, SLACK=80) gana tutorial y bopeebo player
+- `play_like_bot` (LEAD=40, SLACK=80) gana primer-paso y luz-de-neon player
   sin miss ni sustains rotos
 
 Si cambias ventanas o el agente `chart`, actualiza `play_like_bot` en el

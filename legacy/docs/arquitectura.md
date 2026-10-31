@@ -35,7 +35,7 @@ Un único contrato JSON por línea en el socket UNIX (`env/run/engine.sock`,
 override `FNF_SOCK`):
 
 ```json
-{"cmd":"start","song":"tutorial","diff":0,"scale":0.6,"sides":"player"}
+{"cmd":"start","song":"primer-paso","diff":0,"scale":0.6,"sides":"player"}
 {"cmd":"key","key":"left","down":true}
 {"cmd":"status"}
 {"cmd":"list"}

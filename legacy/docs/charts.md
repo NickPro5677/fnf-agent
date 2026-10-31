@@ -21,8 +21,8 @@ Incluidos:
 
 | Nombre | Easy jugador | Easy oponente | Notas |
 |---|---|---|---|
-| tutorial | 32 | 23 | 1 sustain jugador |
-| bopeebo | 44 | 44 | 33 sustains jugador |
+| primer-paso | 32 | 23 | 1 sustain jugador |
+| luz-de-neon | 44 | 44 | 33 sustains jugador |
 | test | 10 | 0 | sintético, huecos de 1.2 s |
 
 ## Añadir una canción

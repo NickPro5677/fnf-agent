@@ -60,7 +60,7 @@ Comandos: `start`, `key`, `status`, `list`, `quit`. Ejemplo de `status`:
 ```json
 {
   "place": "playing",
-  "song": "bopeebo",
+  "song": "luz-de-neon",
   "diff": 0,
   "sides": "player",
   "song_time_ms": 1234.5,
@@ -83,7 +83,7 @@ Comandos: `start`, `key`, `status`, `list`, `quit`. Ejemplo de `status`:
 
 - `lanes`: ms hasta la nota **jugable** `wait` más cercana (−1 si no hay).
 - `holds`: ms restantes del sustain en curso por carril (−1 si no hay).
-  El agente `observe` lo necesita; sin esto rompe bopeebo.
+  El agente `observe` lo necesita; sin esto rompe luz-de-neon.
 
 `list` devuelve los charts con recuentos player/opponent.
 

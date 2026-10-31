@@ -24,5 +24,5 @@ fi
 
 nohup node "$BOT_JS" >>"$LOG_FILE" 2>&1 &
 echo $! > "$PID_FILE"
-echo "[agent] arrancado pid $(cat "$PID_FILE") (song=${FNF_SONG:-tutorial} diff=${FNF_DIFF:-0} sides=${FNF_SIDES:-player} agent=${FNF_AGENT:-chart} scale=${FNF_SCALE:-auto})"
+echo "[agent] arrancado pid $(cat "$PID_FILE") (song=${FNF_SONG:-primer-paso} diff=${FNF_DIFF:-0} sides=${FNF_SIDES:-player} agent=${FNF_AGENT:-chart} scale=${FNF_SCALE:-auto})"
 echo "[agent] logs: $LOG_FILE"

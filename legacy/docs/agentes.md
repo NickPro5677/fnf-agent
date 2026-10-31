@@ -33,7 +33,7 @@ No abre el chart. Cada ~25 ms mira `lanes` y `holds`:
 - La mantiene si `holds[k] ≥ 0`.
 - La suelta si no hay hold ni nota en ventana.
 
-Es peor que `chart` en canciones densas (bopeebo): no planifica, reacciona.
+Es peor que `chart` en canciones densas (luz-de-neon): no planifica, reacciona.
 En `test` (huecos de 1.2 s) debe ganar. Eso es esperado, no un bug.
 
 ## Cómo añadir uno

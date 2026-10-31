@@ -4,7 +4,7 @@ import { engineCall } from "./lib/engine.js";
 
 const AGENTS = new Set(["chart", "observe"]);
 const AGENT = (process.env.FNF_AGENT || "chart").toLowerCase();
-const SONG = process.env.FNF_SONG || "tutorial";
+const SONG = process.env.FNF_SONG || "primer-paso";
 const DIFF = Math.max(0, Math.min(2, Number(process.env.FNF_DIFF || 0)));
 const SIDES = (process.env.FNF_SIDES || "player").toLowerCase() === "both" ? "both" : "player";
 const SCALE_RAW = process.env.FNF_SCALE;
