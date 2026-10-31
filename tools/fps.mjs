@@ -17,7 +17,8 @@ for (const menos of [false, true]) {
     requestAnimationFrame(f);
   }, menos);
   await page.goto(web.url + "?nosw");
-  await preparar(page, { cancion: "turbo-cuantico", dificultad: "hard", jugador: "humano" });
+  await preparar(page, { cancion: "turbo-cuantico", dificultad: "hard", jugador: process.argv[2] || "humano" });
+  if (process.argv[2] === "humanizado") await page.selectOption("#perfil", "novato");
   const cdp = await ctx.newCDPSession(page);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
   await page.click("#btn-jugar");

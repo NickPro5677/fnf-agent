@@ -4,6 +4,7 @@ import { Juego } from "./motor/juego.js";
 import { NOMBRES_CARRIL } from "./motor/constantes.js";
 import { JugadorHumano } from "./jugadores/humano.js";
 import { JugadorBot } from "./jugadores/bot.js";
+import { estadisticas, histograma, guardarMejor, leerMejor, guardarBot, leerBot } from "./vista/estadisticas.js";
 import { JugadorRemoto } from "./jugadores/remoto.js";
 import { Lienzo, COLORES } from "./vista/lienzo.js";
 import { carrilMasCercano, carrilPorFranja } from "./jugadores/tactil.js";
@@ -58,12 +59,19 @@ function pintarCanciones() {
 function guardar() {
   Object.assign(ajustes, {
     cancion: seleccion, jugador: tipoJugador(), dificultad: $("#dificultad").value,
-    precision: +$("#precision").value, velocidad: +$("#velocidad").value, retraso: +$("#retraso").value,
+    perfil: $("#perfil").value, semilla: $("#semilla").value, personalizado: leerPersonalizado(), velocidad: +$("#velocidad").value, retraso: +$("#retraso").value,
     sonido: $("#sonido").checked, url: $("#url-relay").value,
     padModo: $("#pad-modo").value, downscroll: $("#downscroll").value, padAlto: +$("#pad-alto").value,
     padOpacidad: +$("#pad-opacidad").value, vibrar: $("#vibrar").checked, menosEfectos: $("#menos-efectos").checked,
   });
   localStorage.setItem("fnf-ajustes", JSON.stringify(ajustes));
+}
+
+const PZ = { sigma: [1, "ms"], sesgo: [1, "ms"], cansancio: [0.1, ""], presion: [0.1, ""], salto: [0.001, "%"] };
+function leerPersonalizado() {
+  const o = {};
+  for (const [k, [f]] of Object.entries(PZ)) o[k] = +$("#pz-" + k).value * f;
+  return o;
 }
 
 const tipoJugador = () => document.querySelector("input[name=jugador]:checked").value;
@@ -72,7 +80,13 @@ function actualizarOpciones() {
   const t = tipoJugador();
   $("#op-humanizado").classList.toggle("oculto", t !== "humanizado");
   $("#op-remoto").classList.toggle("oculto", t !== "remoto");
-  $("#precision-val").textContent = `${$("#precision").value} %`;
+  $("#op-personalizado").classList.toggle("oculto", $("#perfil").value !== "personalizado");
+  $("#perfil-desc").textContent = traducir("d-" + $("#perfil").value);
+  $("#semilla").value = $("#semilla").value.replace(/\D/g, "");
+  for (const [k, [f, u]] of Object.entries(PZ)) {
+    const v = +$("#pz-" + k).value * f;
+    $(`#pz-${k}-val`).textContent = u === "%" ? `${(v * 100).toFixed(1)} %` : u ? `${Math.round(v)} ${u}` : v.toFixed(1);
+  }
   $("#velocidad-val").textContent = `${(+$("#velocidad").value).toFixed(1)}×`;
   $("#retraso-val").textContent = `${$("#retraso").value} ms`;
   $("#pad-alto-val").textContent = `${$("#pad-alto").value} %`;
@@ -85,7 +99,10 @@ function actualizarOpciones() {
 function aplicarAjustes() {
   if (ajustes.jugador) { const r = document.querySelector(`input[name=jugador][value=${ajustes.jugador}]`); if (r) r.checked = true; }
   if (ajustes.dificultad) $("#dificultad").value = ajustes.dificultad;
-  for (const k of ["precision", "velocidad", "retraso"]) if (ajustes[k] != null) $("#" + k).value = ajustes[k];
+  if (ajustes.perfil) $("#perfil").value = ajustes.perfil;
+  if (ajustes.semilla) $("#semilla").value = ajustes.semilla;
+  if (ajustes.personalizado) for (const [k, [f]] of Object.entries(PZ)) if (ajustes.personalizado[k] != null) $("#pz-" + k).value = Math.round(ajustes.personalizado[k] / f);
+  for (const k of ["velocidad", "retraso"]) if (ajustes[k] != null) $("#" + k).value = ajustes[k];
   if (ajustes.padModo) $("#pad-modo").value = ajustes.padModo;
   if (ajustes.downscroll) $("#downscroll").value = ajustes.downscroll;
   if (ajustes.padAlto != null) $("#pad-alto").value = ajustes.padAlto;
@@ -132,7 +149,13 @@ async function obtenerChart() {
 async function crearJugador() {
   const t = tipoJugador();
   if (t === "perfecto") return new JugadorBot({ modo: "perfecto" });
-  if (t === "humanizado") return new JugadorBot({ modo: "humano", precision: +$("#precision").value / 100, semilla: Date.now() % 1e6 });
+  if (t === "humanizado") {
+    const semilla = $("#semilla").value ? +$("#semilla").value : (Date.now() % 1e6) + 1;
+    const perfil = $("#perfil").value;
+    const j = new JugadorBot({ perfil, semilla, ajustes: perfil === "personalizado" ? leerPersonalizado() : {} });
+    j.nombre = `${j.nombre.replace(/^Bot \S+/, "Bot " + $("#perfil").selectedOptions[0].textContent.trim())} · ${traducir("semilla-c")} ${semilla}`;
+    return j;
+  }
   if (t === "remoto") {
     if (!remoto && !(await conectarRelay())) return null;
     return remoto;
@@ -258,6 +281,7 @@ async function empezar() {
       pensar(texto) { $("#panel-ia-piensa").textContent = texto; },
     };
     partida.ctx = ctx;
+    lienzo.etiquetaErrores = traducir("errores-vivo");
     partida.manejar = manejar;
     panelIA(jugador);
     jugador.conectar(ctx);
@@ -281,7 +305,8 @@ function bucle() {
   }
   lienzo.dibujar(juego, t, { velocidad: partida.velocidad, bpm: partida.chart.bpm, color: partida.info.color || "#7c5cff", mostrarIA: jugador.tipo !== "humano", reserva: reservaPanel(),
     soloJugador: partida.modo.soloJugador, downscroll: partida.modo.downscroll, zona: zonaPx(), verZonas,
-    menosEfectos: $("#menos-efectos").checked, pulsadas: partida.pulsadas, opacidad: +$("#pad-opacidad").value / 100 });
+    menosEfectos: $("#menos-efectos").checked, pulsadas: partida.pulsadas, opacidad: +$("#pad-opacidad").value / 100,
+    marcas: jugador.marcas?.(), errores: jugador.tipo === "bot" ? partida.tiempos : null });
   contarCuadro();
   const r = juego.resumen();
   pon("#hud-puntos", r.puntos.toLocaleString(idioma()));
@@ -309,6 +334,8 @@ function terminar(mostrar) {
     for (const k of ["sick", "good", "bad", "miss"]) $(`#res-${k}`).textContent = r.juicios[k];
     pintarDonut(r.juicios);
     pintarGrafica(partida.tiempos, partida.juego.notas.at(-1)?.t || 1);
+    pintarHistograma(partida.tiempos);
+    compararConBot(r);
     $("#res-quien").textContent = `${traducir("jugo")}: ${quien} · ${partida.chart.titulo} (${partida.chart.dificultad})`;
     $("#resultados").showModal();
   }
@@ -344,6 +371,47 @@ function pintarGrafica(tiempos, dur) {
     else html += `<circle cx="${x.toFixed(1)}" cy="${y(p.d ?? 0).toFixed(1)}" r="1.6" fill="${col[p.j]}"/>`;
   }
   $("#res-grafica").innerHTML = html;
+}
+
+// Histograma del desfase de los toques.
+function pintarHistograma(tiempos) {
+  const { cubetas, ancho } = histograma(tiempos);
+  const max = Math.max(1, ...cubetas);
+  const w = 300 / cubetas.length;
+  let html = `<rect width="300" height="90" fill="#0b0820"/><line x1="150" y1="0" x2="150" y2="90" stroke="#ffffff55" stroke-width=".6"/>`;
+  cubetas.forEach((n, i) => {
+    const c = Math.abs(-180 + (i + 0.5) * ancho);
+    const col = c <= 45 ? "#6ef3ff" : c <= 90 ? "#3ef08a" : c <= 135 ? "#ffd84f" : "#ff7b93";
+    const h = (n / max) * 84;
+    if (n) html += `<rect x="${(i * w + 0.6).toFixed(1)}" y="${(88 - h).toFixed(1)}" width="${(w - 1.2).toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${col}"/>`;
+  });
+  $("#res-histo").innerHTML = html;
+  const e = estadisticas(tiempos);
+  $("#res-histo-stats").textContent = e.n ? `· ${traducir("media")} ${e.media > 0 ? "+" : ""}${e.media.toFixed(1)} ms · ${traducir("desv")} ${e.desv.toFixed(1)} ms` : "";
+}
+
+// Tú vs Bot: tus mejores partidas quedan en este dispositivo (localStorage).
+function compararConBot(r) {
+  const { id, chart, jugador, tiempos } = partida;
+  const clave = `${id}|${chart.dificultad}`;
+  const fila = { precision: r.precision, puntos: r.puntos, fallos: r.juicios.miss, media: estadisticas(tiempos).media, letra: r.letra, nombre: jugador.nombre };
+  let tu, bot;
+  if (jugador.tipo === "humano") { guardarMejor(clave, fila); tu = leerMejor(clave); bot = leerBot(clave); }
+  else if (jugador.tipo === "bot") { guardarBot(clave, fila); tu = leerMejor(clave); bot = fila; }
+  else { $("#res-vs").classList.add("oculto"); return; }
+  $("#res-vs").classList.remove("oculto");
+  $("#vs-a").textContent = traducir("vs-tu");
+  $("#vs-b").textContent = bot?.nombre || traducir("vs-bot");
+  const f = (v, k) => v == null ? "—" : k === "precision" ? `${(v * 100).toFixed(2)} %` : k === "media" ? `${v > 0 ? "+" : ""}${v.toFixed(1)} ms` : k === "puntos" ? v.toLocaleString(idioma()) : String(v);
+  if (!tu || !bot) {
+    $("#vs-filas").innerHTML = `<tr><td colspan="3">${traducir(tu ? "vs-sin-bot" : "vs-nada")}</td></tr>`;
+    return;
+  }
+  const mejor = { precision: 1, puntos: 1, fallos: -1 };
+  $("#vs-filas").innerHTML = ["letra", "precision", "puntos", "fallos", "media"].map((k) => {
+    const s = mejor[k] ? Math.sign((tu[k] - bot[k]) * mejor[k]) : 0;
+    return `<tr><th scope="row">${traducir("vs-" + k)}</th><td${s > 0 ? ' class="gana"' : ""}>${f(tu[k], k)}</td><td${s < 0 ? ' class="gana"' : ""}>${f(bot[k], k)}</td></tr>`;
+  }).join("");
 }
 
 // Transición entre pantallas.
@@ -393,7 +461,7 @@ $("#archivo-audio").addEventListener("change", async (e) => {
 
 // ---------- eventos ----------
 document.querySelectorAll("input[name=jugador]").forEach((r) => r.addEventListener("change", actualizarOpciones));
-["#precision", "#velocidad", "#retraso", "#dificultad", "#sonido", "#pad-modo", "#downscroll", "#pad-alto", "#pad-opacidad", "#vibrar", "#ver-zonas", "#menos-efectos"].forEach((s) => $(s).addEventListener("input", actualizarOpciones));
+["#perfil", "#semilla", "#pz-sigma", "#pz-sesgo", "#pz-cansancio", "#pz-presion", "#pz-salto", "#velocidad", "#retraso", "#dificultad", "#sonido", "#pad-modo", "#downscroll", "#pad-alto", "#pad-opacidad", "#vibrar", "#ver-zonas", "#menos-efectos"].forEach((s) => $(s).addEventListener("input", actualizarOpciones));
 $("#btn-conectar").addEventListener("click", conectarRelay);
 $("#btn-jugar").addEventListener("click", empezar);
 $("#btn-repetir").addEventListener("click", () => { $("#resultados").close(); empezar(); });
@@ -401,13 +469,14 @@ $("#btn-menu").addEventListener("click", volverAlMenu);
 $("#btn-salir").addEventListener("click", volverAlMenu);
 $("#resultados").addEventListener("cancel", (e) => { e.preventDefault(); volverAlMenu(); });
 addEventListener("keydown", (e) => { if (e.key === "Escape" && partida && !partida.terminada) volverAlMenu(); });
-$("#btn-idioma").addEventListener("click", () => { cambiarIdioma(); pintarCanciones(); });
+$("#btn-idioma").addEventListener("click", () => { cambiarIdioma(); pintarCanciones(); actualizarOpciones(); });
 
 // En la demo https el navegador bloquea ws://127.0.0.1: avisarlo claramente.
 const LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 if (location.protocol === "https:" && !LOCAL) $("#aviso-https").classList.remove("oculto");
 
 window.__fnf = {
+  marcas: () => partida?.jugador?.marcas?.() ?? null,
   geometria: () => lienzo.geometria(reservaPanel()),
   estado: () => partida ? { t: partida.juego.t, ...partida.juego.resumen(), jugador: partida.jugador.nombre, teclas: [...partida.juego.teclas] } : null,
   // true cuando la partida empezó y el jugador ya escucha teclado/pad.

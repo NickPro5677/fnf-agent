@@ -1,10 +1,10 @@
 // Guarda todo para que el juego funcione sin internet.
-const CACHE = "fnf-agent-v4.0.0-4"; // cambia el sufijo para que los teléfonos reciban los cambios
+const CACHE = "fnf-agent-v4.0.0-6"; // cambia el sufijo para que los teléfonos reciban los cambios
 const ARCHIVOS = [
   "./", "index.html", "estilos.css", "app.js", "i18n.js", "manifest.webmanifest", "icono.svg",
   "motor/constantes.js", "motor/chart.js", "motor/juego.js", "motor/protocolo.js",
   "jugadores/humano.js", "jugadores/tactil.js", "jugadores/bot.js", "jugadores/remoto.js",
-  "vista/lienzo.js", "audio/musica.js", "fuentes/fredoka.woff2", "fuentes/nunito.woff2",
+  "vista/lienzo.js", "vista/estadisticas.js", "audio/musica.js", "fuentes/fredoka.woff2", "fuentes/nunito.woff2",
   "canciones/lista.json", "canciones/primer-paso.json", "canciones/luz-de-neon.json", "canciones/turbo-cuantico.json",
 ];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ARCHIVOS)).then(() => self.skipWaiting())));
