@@ -1,0 +1,35 @@
+[
+ {
+  "id": "primer-paso",
+  "titulo": "Primer paso",
+  "bpm": 100,
+  "color": "#7c5cff",
+  "notas": {
+   "easy": 22,
+   "normal": 34,
+   "hard": 57
+  }
+ },
+ {
+  "id": "luz-de-neon",
+  "titulo": "Luz de neón",
+  "bpm": 124,
+  "color": "#ff4fa3",
+  "notas": {
+   "easy": 24,
+   "normal": 35,
+   "hard": 53
+  }
+ },
+ {
+  "id": "turbo-cuantico",
+  "titulo": "Turbo cuántico",
+  "bpm": 150,
+  "color": "#25c2a0",
+  "notas": {
+   "easy": 24,
+   "normal": 53,
+   "hard": 69
+  }
+ }
+]
