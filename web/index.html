@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0a1f">
+<meta name="description" content="Juego de ritmo estilo Friday Night Funkin' para jugar a mano o conectar una IA. Funciona sin internet.">
+<title>FNF-Agent · juego de ritmo para personas e IAs</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<a class="saltar" href="#principal">Saltar al contenido</a>
+<header class="barra">
+  <h1><span aria-hidden="true">◆</span> FNF-Agent <small>4.0</small></h1>
+  <div class="barra-acciones">
+    <button id="btn-idioma" class="chip" type="button" aria-label="Change language to English">EN</button>
+  </div>
+</header>
+
+<main id="principal">
+<!-- MENÚ -->
+<section id="menu" aria-labelledby="t-menu">
+  <h2 id="t-menu" data-i18n="elige">1. Elige una canción</h2>
+  <div id="canciones" class="canciones" role="radiogroup" aria-labelledby="t-menu"></div>
+
+  <details class="tarjeta" id="propia">
+    <summary data-i18n="propia">Usar mi propio chart y audio</summary>
+    <p class="ayuda" data-i18n="propia-ayuda">Acepta charts de FNF 0.8+ (v2.0.0), FNF clásico y Psych Engine. Tus archivos no salen del teléfono.</p>
+    <label class="archivo">Chart (.json) <input id="archivo-chart" type="file" accept=".json,application/json"></label>
+    <label class="archivo">Audio (.ogg, .mp3, .wav) <input id="archivo-audio" type="file" accept="audio/*,.ogg"></label>
+    <p id="estado-archivos" class="ayuda" role="status"></p>
+  </details>
+
+  <h2 id="t-quien" data-i18n="quien">2. ¿Quién juega?</h2>
+  <fieldset class="jugadores">
+    <legend class="sr" data-i18n="quien">¿Quién juega?</legend>
+    <label class="opcion"><input type="radio" name="jugador" value="humano" checked><span><b data-i18n="j-humano">Tú</b><small data-i18n="j-humano-d">Flechas táctiles o teclado (← ↓ ↑ → o WASD)</small></span></label>
+    <label class="opcion"><input type="radio" name="jugador" value="perfecto"><span><b data-i18n="j-perfecto">Bot perfecto</b><small data-i18n="j-perfecto-d">Nunca falla. Para ver cómo debería sonar.</small></span></label>
+    <label class="opcion"><input type="radio" name="jugador" value="humanizado"><span><b data-i18n="j-humanizado">Bot humano</b><small data-i18n="j-humanizado-d">Se equivoca según la precisión que elijas.</small></span></label>
+    <label class="opcion"><input type="radio" name="jugador" value="remoto"><span><b data-i18n="j-remoto">IA externa</b><small data-i18n="j-remoto-d">Un programa (Python, LLM…) se conecta por WebSocket.</small></span></label>
+  </fieldset>
+  <div id="op-humanizado" class="tarjeta oculto">
+    <label for="precision"><span data-i18n="precision">Precisión del bot</span>: <output id="precision-val">85 %</output></label>
+    <input id="precision" type="range" min="50" max="99" value="85">
+  </div>
+  <div id="op-remoto" class="tarjeta oculto">
+    <label for="url-relay" data-i18n="url-relay">Dirección del relay</label>
+    <div class="fila">
+      <input id="url-relay" type="url" value="ws://127.0.0.1:8765" spellcheck="false" autocomplete="off">
+      <button id="btn-conectar" type="button" class="secundario" data-i18n="conectar">Conectar</button>
+    </div>
+    <p id="estado-relay" class="ayuda" role="status" data-i18n="relay-ayuda">En Termux: <code>python agente/relay.py</code> y luego <code>python agente/agente_chart.py</code>.</p>
+  </div>
+
+  <h2 data-i18n="ajustes">3. Ajustes</h2>
+  <div class="ajustes tarjeta">
+    <label for="dificultad" data-i18n="dificultad">Dificultad</label>
+    <select id="dificultad"><option value="easy">Fácil</option><option value="normal" selected>Normal</option><option value="hard">Difícil</option></select>
+    <label for="velocidad"><span data-i18n="velocidad">Velocidad de las notas</span>: <output id="velocidad-val">1.0×</output></label>
+    <input id="velocidad" type="range" min="0.6" max="2" step="0.1" value="1">
+    <label for="retraso"><span data-i18n="retraso">Retraso del audio</span>: <output id="retraso-val">0 ms</output></label>
+    <input id="retraso" type="range" min="-200" max="300" step="5" value="0">
+    <label class="interruptor"><input id="sonido" type="checkbox" checked> <span data-i18n="sonido">Música</span></label>
+  </div>
+
+  <button id="btn-jugar" class="jugar" type="button" data-i18n="jugar">▶ Jugar</button>
+  <p class="pie" data-i18n="pie">Proyecto libre (MIT). Inspirado en Friday Night Funkin'; no incluye música, charts ni dibujos oficiales.</p>
+</section>
+
+<!-- JUEGO -->
+<section id="juego" class="oculto" aria-label="Partida">
+  <div class="hud" aria-live="off">
+    <span><small data-i18n="puntos">Puntos</small><b id="hud-puntos">0</b></span>
+    <span><small data-i18n="prec">Precisión</small><b id="hud-precision">100 %</b></span>
+    <span><small>Combo</small><b id="hud-combo">0</b></span>
+    <span><small data-i18n="fallos">Fallos</small><b id="hud-fallos">0</b></span>
+    <button id="btn-salir" type="button" class="chip" data-i18n="salir">✕ Salir</button>
+  </div>
+  <div class="escena">
+    <canvas id="lienzo" role="img" aria-label="Pista de notas"></canvas>
+    <aside id="panel-ia" class="panel-ia oculto" aria-label="Decisiones de la IA">
+      <h3 id="panel-ia-titulo">IA</h3>
+      <p id="panel-ia-piensa" class="piensa"></p>
+      <ol id="panel-ia-lista"></ol>
+    </aside>
+  </div>
+  <div id="pad" class="pad" aria-label="Flechas táctiles">
+    <button type="button" class="tecla t0" aria-label="Izquierda"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 20 L22 6 V14 H33 V26 H22 V34 Z"/></svg></button>
+    <button type="button" class="tecla t1" aria-label="Abajo"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 33 L6 19 H14 V7 H26 V19 H34 Z"/></svg></button>
+    <button type="button" class="tecla t2" aria-label="Arriba"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 7 L34 21 H26 V33 H14 V21 H6 Z"/></svg></button>
+    <button type="button" class="tecla t3" aria-label="Derecha"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M32 20 L18 34 V26 H7 V14 H18 V6 Z"/></svg></button>
+  </div>
+</section>
+
+<!-- RESULTADOS -->
+<dialog id="resultados" aria-labelledby="res-titulo">
+  <h2 id="res-titulo">¡Victoria!</h2>
+  <p class="letra" id="res-letra">S</p>
+  <dl class="stats">
+    <div><dt data-i18n="puntos">Puntos</dt><dd id="res-puntos">0</dd></div>
+    <div><dt data-i18n="prec">Precisión</dt><dd id="res-precision">0</dd></div>
+    <div><dt data-i18n="combo-max">Combo máx.</dt><dd id="res-combo">0</dd></div>
+    <div><dt>Sick</dt><dd id="res-sick">0</dd></div>
+    <div><dt>Good</dt><dd id="res-good">0</dd></div>
+    <div><dt>Bad</dt><dd id="res-bad">0</dd></div>
+    <div><dt>Miss</dt><dd id="res-miss">0</dd></div>
+  </dl>
+  <p id="res-quien" class="ayuda"></p>
+  <div class="fila">
+    <button id="btn-repetir" type="button" class="jugar" data-i18n="repetir">↻ Repetir</button>
+    <button id="btn-menu" type="button" class="secundario" data-i18n="menu">Menú</button>
+  </div>
+</dialog>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
