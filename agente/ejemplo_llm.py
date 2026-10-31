@@ -10,7 +10,10 @@ Sin configuración usa un "modelo de mentira" local (a veces se equivoca).
 Con un servidor compatible con la API de OpenAI (por ejemplo uno local):
     FNF_LLM_URL=http://127.0.0.1:8080/v1/chat/completions FNF_LLM_MODEL=mi-modelo \
     python agente/ejemplo_llm.py
-La clave, si hace falta, se lee de la variable FNF_LLM_KEY (nunca la escribas en el código).
+La clave, si hace falta, se lee de la variable FNF_LLM_KEY (nunca la escribas en el código ni en el repo).
+
+Protocolo v2: si el juego lo admite, cada tecla del plan sale en cuanto el modelo responde, con "at"
+(el instante de la canción en que debe contar). Así la lentitud de la red no estropea el plan.
 """
 import argparse
 import json
@@ -22,9 +25,9 @@ import time
 import urllib.request
 
 try:
-    from comun import CARRILES, FLECHAS, URL_POR_DEFECTO, Reloj, conectar
+    from comun import CARRILES, FLECHAS, Reloj, argumentos_comunes, caps_del_juego, conectar, responder_ping
 except ImportError:
-    from .comun import CARRILES, FLECHAS, URL_POR_DEFECTO, Reloj, conectar
+    from .comun import CARRILES, FLECHAS, Reloj, argumentos_comunes, caps_del_juego, conectar, responder_ping
 
 HORIZONTE_MS = 2500
 
@@ -74,10 +77,15 @@ def jugar(ws, una=False, log=print):
         pensando.clear()
 
     sueltas = []
+    usa_at = "at" in caps_del_juego(getattr(ws, "bienvenida", {}) or {})
     while True:
         msg = ws.recibir(timeout=0.002)
         if msg:
-            if msg.get("type") == "chart":
+            if msg.get("type") in ("welcome", "peers"):
+                usa_at = "at" in caps_del_juego(msg)
+            elif msg.get("type") == "ping":
+                responder_ping(ws, msg)
+            elif msg.get("type") == "chart":
                 notas, plan, hechas = msg["notes"], [], set()
                 reloj.reiniciar()
             elif msg.get("type") == "state":
@@ -93,6 +101,10 @@ def jugar(ws, una=False, log=print):
         if notas and not pensando.is_set():
             pensando.set()
             threading.Thread(target=pensar, args=(t,), daemon=True).start()
+        while usa_at and plan:  # v2: todo el plan sale ya, cada tecla con su instante
+            tn, lane, largo, nid = plan.pop(0)
+            ws.enviar({"type": "key", "lane": lane, "down": True, "at": tn, "why": f"plan del modelo: nota {nid} → {CARRILES[lane]}"})
+            ws.enviar({"type": "key", "lane": lane, "down": False, "at": tn + largo})
         while plan and plan[0][0] <= t:
             tn, lane, largo, nid = plan.pop(0)
             ws.enviar({"type": "key", "lane": lane, "down": True, "why": f"plan del modelo: nota {nid} → {CARRILES[lane]}"})
@@ -103,13 +115,11 @@ def jugar(ws, una=False, log=print):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--relay", default=URL_POR_DEFECTO)
-    ap.add_argument("--una", action="store_true")
+    ap = argumentos_comunes(argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter))
     a = ap.parse_args()
     sys.stdout.reconfigure(line_buffering=True)
     try:
-        ws = conectar("ejemplo LLM", a.relay)
+        ws = conectar("ejemplo LLM", a.relay, token=a.token, v=2, caps=["at"])
     except OSError as e:
         sys.exit(f"No pude conectar a {a.relay}: {e}")
     print("[llm] conectado. Modelo:", os.environ.get("FNF_LLM_URL") or "de mentira (local)")

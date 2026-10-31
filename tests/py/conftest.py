@@ -20,9 +20,28 @@ def puerto_libre():
     return p
 
 
+TOKEN = "prueba-token-123"
+
+
 @pytest.fixture
-def relay():
-    """Arranca un relay real en un hilo y devuelve su URL ws://."""
+def token(monkeypatch):
+    monkeypatch.setenv("FNF_TOKEN", TOKEN)
+    return TOKEN
+
+
+@pytest.fixture
+def relay(token):
+    """Arranca un relay real (con token) en un hilo y devuelve su URL ws://."""
+    yield from _relay()
+
+
+@pytest.fixture
+def relay_lento(token):
+    """Relay con 80 ms de latencia simulada en cada mensaje reenviado."""
+    yield from _relay(retraso=80)
+
+
+def _relay(retraso=0):
     puerto = puerto_libre()
     loop = asyncio.new_event_loop()
     listo = threading.Event()
@@ -30,7 +49,7 @@ def relay():
 
     def correr():
         asyncio.set_event_loop(loop)
-        r, srv = loop.run_until_complete(relay_mod.servir("127.0.0.1", puerto, log=lambda *_: None))
+        r, srv = loop.run_until_complete(relay_mod.servir("127.0.0.1", puerto, token=TOKEN, retraso=retraso, log=lambda *_: None))
         estado["relay"], estado["srv"] = r, srv
         listo.set()
         loop.run_forever()
