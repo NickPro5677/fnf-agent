@@ -20,7 +20,8 @@ Pasos:
 
 1. `python agente/relay.py`
 2. `python mi_ia.py` (desde la carpeta del proyecto)
-3. En el juego: **IA externa → Jugar**.
+3. Sirve el juego en local (`python -m http.server 8000 -d web`) y abre `http://127.0.0.1:8000`: **IA externa → Jugar**.
+   La demo https (GitHub Pages) no sirve para esto: el navegador bloquea `ws://127.0.0.1` desde https.
 
 Consejos:
 

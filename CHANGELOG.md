@@ -1,5 +1,12 @@
 # Cambios
 
+## Sin publicar
+
+- La demo web (https) avisa que una IA externa necesita el juego servido en local (el navegador bloquea `ws://127.0.0.1`). README y docs enlazan la demo.
+- El pad táctil ya no se rompe si el navegador no permite capturar el puntero.
+- Prueba e2e del pad estable: espera a que la partida esté lista en vez de asumir tiempos.
+- Caché del service worker renovada para que se vean los cambios.
+
 ## 4.0.0 — 2026-10-31
 
 Rediseño completo: el juego ahora corre en el navegador.

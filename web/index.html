@@ -51,6 +51,7 @@
       <input id="url-relay" type="url" value="ws://127.0.0.1:8765" spellcheck="false" autocomplete="off">
       <button id="btn-conectar" type="button" class="secundario" data-i18n="conectar">Conectar</button>
     </div>
+    <p id="aviso-https" class="ayuda aviso oculto" data-i18n="aviso-https">Estás en la demo web (https). El navegador no deja que esta página se conecte a <code>ws://127.0.0.1</code>. Para jugar con una IA, abre el juego en local: <code>python -m http.server 8000 -d web</code> y entra a <code>http://127.0.0.1:8000</code>.</p>
     <p id="estado-relay" class="ayuda" role="status" data-i18n="relay-ayuda">En Termux: <code>python agente/relay.py</code> y luego <code>python agente/agente_chart.py</code>.</p>
   </div>
 

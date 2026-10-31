@@ -91,3 +91,5 @@ dialog .fila { justify-content: center; }
   .panel-ia li .m { display: none; }
   .panel-ia li .j { margin-left: 0; }
 }
+
+.aviso { color: #ffe08a; border-left: 3px solid #ffd84f; padding-left: .5rem; }
