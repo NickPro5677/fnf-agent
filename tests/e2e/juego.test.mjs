@@ -87,10 +87,15 @@ test("pad táctil: tocar una flecha la pulsa en el juego", async () => {
   await page.goto(web.url + "?nosw");
   await preparar(page, { cancion: "primer-paso", jugador: "humano" });
   await page.click("#btn-jugar");
-  await page.locator("#pad .t2").dispatchEvent("pointerdown", { pointerId: 1, isPrimary: true });
-  assert.deepEqual(await page.evaluate(() => window.__fnf.estado() && document.querySelector("#pad .t2").classList.contains("activo")), true);
-  await page.locator("#pad .t2").dispatchEvent("pointerup", { pointerId: 1, isPrimary: true });
-  assert.equal(await page.evaluate(() => document.querySelector("#pad .t2").classList.contains("activo")), false);
+  // empezar() es asíncrono (carga el chart): esperar a que el pad esté conectado, no un tiempo fijo.
+  await page.waitForFunction(() => window.__fnf.listo());
+  const t2 = page.locator("#pad .t2");
+  await t2.dispatchEvent("pointerdown", { pointerId: 1, isPrimary: true, pointerType: "touch" });
+  const abajo = await page.evaluate(() => ({ clase: document.querySelector("#pad .t2").classList.contains("activo"), tecla: window.__fnf.estado().teclas[2] }));
+  assert.deepEqual(abajo, { clase: true, tecla: true });
+  await t2.dispatchEvent("pointerup", { pointerId: 1, isPrimary: true, pointerType: "touch" });
+  const arriba = await page.evaluate(() => ({ clase: document.querySelector("#pad .t2").classList.contains("activo"), tecla: window.__fnf.estado().teclas[2] }));
+  assert.deepEqual(arriba, { clase: false, tecla: false });
   await page.close();
 });
 

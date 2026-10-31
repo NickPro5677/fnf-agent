@@ -207,6 +207,7 @@ async function empezar() {
     partida.manejar = manejar;
     panelIA(jugador);
     jugador.conectar(ctx);
+    partida.listo = true; // ya hay controles conectados (las pruebas esperan esto)
     if ($("#sonido").checked) musica.iniciar(chart, info, cuenta); else musica.detener();
     partida.raf = requestAnimationFrame(bucle);
   } catch (e) {
@@ -298,9 +299,15 @@ $("#resultados").addEventListener("cancel", (e) => { e.preventDefault(); volverA
 addEventListener("keydown", (e) => { if (e.key === "Escape" && partida && !partida.terminada) volverAlMenu(); });
 $("#btn-idioma").addEventListener("click", () => { cambiarIdioma(); pintarCanciones(); });
 
+// En la demo https el navegador bloquea ws://127.0.0.1: avisarlo claramente.
+const LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+if (location.protocol === "https:" && !LOCAL) $("#aviso-https").classList.remove("oculto");
+
 window.__fnf = {
   geometria: () => lienzo.geometria(reservaPanel()),
-  estado: () => partida ? { t: partida.juego.t, ...partida.juego.resumen(), jugador: partida.jugador.nombre } : null,
+  estado: () => partida ? { t: partida.juego.t, ...partida.juego.resumen(), jugador: partida.jugador.nombre, teclas: [...partida.juego.teclas] } : null,
+  // true cuando la partida empezó y el jugador ya escucha teclado/pad.
+  listo: () => !!partida?.listo,
   ultimo: null,
   // Solo para pruebas automáticas: próximas notas del jugador.
   proximas: () => partida ? partida.juego.jugables.filter((n) => n.estado === "espera").slice(0, 6).map((n) => ({ t: n.t, lane: n.lane, l: n.l })) : [],
