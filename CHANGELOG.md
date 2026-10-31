@@ -1,6 +1,23 @@
 # Cambios
 
-## Sin publicar
+## 4.1.0 — sin publicar
+
+### Nuevo
+- **Bot con 7 perfiles:** Perfecto, Pro, Bueno, Novato, Nervioso, Cansado y Personalizado. Error realista: colas largas,
+  tendencia a adelantarse o atrasarse, peor en pasajes densos, cansancio y presión. Decide nota a nota con una **semilla** (en el menú).
+- Gráfica de errores en vivo, marcas de lo que el bot piensa tocar, **histograma** en resultados y **Tú vs Bot** con tus mejores partidas.
+- **Protocolo v2** (compatible con v1): saludo con capacidades, teclas con `at`, ping/pong con compensación de latencia,
+  `state` con todas las notas del lookahead y rol **espectador**. Ver `docs/protocolo-v2.md`.
+- **Ajustes de IA externa:** host, puerto, token, protocolo, lookahead/Hz, compensación, **Probar conexión**,
+  perfiles guardados (exportar/importar, sin el token) y registro en vivo.
+- Agentes nuevos: `agente_autoajuste.py` (≥95 % Sick con 80 ms de latencia) y `agente.mjs` (JavaScript sin dependencias).
+  `agente_observe.py`, `ejemplo_llm.py` y el MCP (`juego_latencia`, `juego_tecla` con `at`) pasan a v2.
+
+### Cambiado
+- **El relay exige token.** Lo genera al arrancar, lo muestra en Termux y lo guarda en `~/.fnf-agent/token`
+  (los agentes lo leen solos). Solo acepta páginas de `127.0.0.1`/`localhost` (`--origen` para añadir otras).
+  `agente_chart.py` (v1) funciona igual, pero el juego necesita el token en Ajustes.
+- "Bot humanizado" pasa a ser el perfil Novato.
 
 - La demo web (https) avisa que una IA externa necesita el juego servido en local (el navegador bloquea `ws://127.0.0.1`). README y docs enlazan la demo.
 - El pad táctil ya no se rompe si el navegador no permite capturar el puntero.
