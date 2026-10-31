@@ -45,7 +45,8 @@ body.en-juego .fondo-animado { display: none; }
 
 /* Pantallas y entrada */
 .pantalla.entrar { animation: entrar .45s var(--curva) both; }
-@keyframes entrar { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+/* Solo movimiento, sin opacidad: el texto siempre tiene su contraste completo (también a mitad de la animación). */
+@keyframes entrar { from { transform: translateY(14px); } to { transform: none; } }
 #menu > * { animation: entrar .5s var(--curva) both; }
 #menu > :nth-child(2) { animation-delay: .05s; } #menu > :nth-child(3) { animation-delay: .1s; } #menu > :nth-child(4) { animation-delay: .15s; }
 #menu > :nth-child(5) { animation-delay: .2s; } #menu > :nth-child(6) { animation-delay: .25s; } #menu > :nth-child(n+7) { animation-delay: .3s; }
@@ -146,13 +147,13 @@ body.sin-pad .pad { display: none !important; }
 /* Resultados */
 dialog { background: linear-gradient(170deg, var(--panel2), var(--panel)); color: var(--texto); border: 1px solid var(--borde); border-radius: 24px; padding: 1.2rem 1.3rem; width: min(480px, calc(100vw - 1.5rem)); max-height: calc(100dvh - 1.5rem); overflow-y: auto; text-align: center; box-shadow: 0 30px 80px -20px #000, 0 0 0 1px #ffffff10 inset, 0 0 60px -20px var(--acento); }
 dialog[open] { animation: aparecer .5s var(--curva) both; }
-@keyframes aparecer { from { opacity: 0; transform: translateY(20px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes aparecer { from { transform: translateY(20px) scale(.96); } to { transform: none; } }
 dialog::backdrop { background: #05030fcc; backdrop-filter: blur(4px); }
 dialog h2 { margin: 0; font-weight: 700; font-size: 1.6rem; }
 .res-cabeza { display: flex; align-items: center; justify-content: center; gap: 1.2rem; margin: .3rem 0 .6rem; }
 .letra { font-size: 4.6rem; line-height: 1; font-weight: 700; margin: 0; background: linear-gradient(135deg, var(--oro), var(--acento)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 18px #ff4fa366); }
 dialog[open] .letra { animation: sello .6s .15s var(--curva) both; }
-@keyframes sello { from { opacity: 0; transform: scale(2.2) rotate(-12deg); } to { opacity: 1; transform: none; } }
+@keyframes sello { from { transform: scale(2.2) rotate(-12deg); } to { transform: none; } }
 .donut { width: 96px; height: 96px; transform: rotate(0deg); }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: .4rem; margin: 0 0 .6rem; }
 .stats div { background: #0b0820aa; border: 1px solid #ffffff10; border-radius: var(--radio-s); padding: .35rem; }
