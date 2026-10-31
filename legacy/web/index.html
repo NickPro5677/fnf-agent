@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>FNF-Agent · Visor</title>
+<style>
+  :root {
+    --bg: #12101f;
+    --panel: #1d1930;
+    --line: #282043;
+    --text: #e6e2ff;
+    --dim: #8f86c0;
+    --accent: #ff43c8;
+    --green: #5bf07a;
+    --red: #ff5b5b;
+    --yellow: #ffd45b;
+    --blue: #5bb8ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    padding-bottom: 28px;
+  }
+  h1 {
+    font-size: 1rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 4px 0 12px;
+  }
+  #stack { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 12px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  #screen {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #000;
+  }
+  #live { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  #placeBadge {
+    position: absolute; top: 10px; right: 10px;
+    padding: 4px 12px; border-radius: 999px; font-size: 12px;
+    letter-spacing: 1px; font-weight: 700;
+    background: rgba(0,0,0,.55); border: 1px solid rgba(255,212,91,.4); color: var(--yellow);
+  }
+  #conn {
+    position: absolute; top: 10px; left: 10px;
+    display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim);
+    background: rgba(0,0,0,.55); padding: 4px 10px; border-radius: 999px;
+  }
+  #dot { width: 10px; height: 10px; border-radius: 50%; background: #6a6391; }
+  #dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  #dot.offline { background: var(--red);   box-shadow: 0 0 8px var(--red); }
+
+  .hudrow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hud3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .metric { background: rgba(255,255,255,.04); border-radius: 10px; padding: 8px 12px; }
+  .metric .k { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; }
+  .metric .v { font-size: 20px; font-weight: 800; }
+  .metric .v.sub { font-size: 15px; font-weight: 600; word-break: break-word; }
+  #scorev { color: var(--yellow); }
+  #combov { color: var(--green); }
+  #accv { color: var(--blue); }
+
+  #healthWrap {
+    height: 18px; border-radius: 999px; background: #120f22;
+    border: 1px solid #2c2450; overflow: hidden; margin-top: 4px;
+  }
+  #healthBar { height: 100%; width: 50%; border-radius: 999px; background: var(--green); transition: width .25s, background .25s; }
+
+  .svc { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    font-size: 11px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--dim); background: rgba(0,0,0,.25);
+  }
+  .pill.on { color: var(--green); border-color: rgba(91,240,122,.35); }
+  .pill.off { color: var(--red); border-color: rgba(255,91,91,.35); }
+
+  .controls { display: flex; flex-direction: column; gap: 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  label.field {
+    display: flex; flex-direction: column; gap: 4px; font-size: 11px;
+    color: var(--dim); text-transform: uppercase; letter-spacing: 1px;
+    flex: 1; min-width: 110px;
+  }
+  select, button, input[type="password"], input[type="number"] {
+    font: inherit; border-radius: 10px; border: 1px solid var(--line);
+    background: #151228; color: var(--text); padding: 10px 12px;
+  }
+  select, input[type="password"], input[type="number"] { width: 100%; }
+  button { cursor: pointer; font-weight: 700; letter-spacing: 0.3px; flex: 1; min-width: 110px; }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.45; cursor: wait; }
+  button.primary { background: linear-gradient(135deg, #ff43c8, #7b5cff); border: none; color: #fff; }
+  button.good { background: rgba(91,240,122,.12); border-color: rgba(91,240,122,.4); color: var(--green); }
+  button.bad  { background: rgba(255,91,91,.12); border-color: rgba(255,91,91,.4); color: var(--red); }
+  button.ghost { background: transparent; color: var(--dim); }
+
+  #pad { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px; }
+  #pad button { min-width: 0; padding: 18px 8px; font-size: 18px; user-select: none; touch-action: none; }
+  #pad .sp { visibility: hidden; }
+
+  #notice { text-align: center; color: var(--dim); font-size: 13px; min-height: 18px; line-height: 1.5; padding: 2px; }
+  #notice.error { color: var(--red); }
+  #notice.hint  { color: var(--yellow); }
+  #notice.ok    { color: var(--green); }
+  code { background: rgba(255,255,255,.08); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
+  footer { margin-top: 8px; padding-top: 10px; font-size: 11px; color: #5b5487; text-align: center; }
+</style>
+</head>
+<body>
+  <h1>FNF-Agent · visor</h1>
+  <div id="stack">
+    <div class="card" id="screen">
+      <img id="live" alt="video del motor FNF">
+      <span id="conn"><span id="dot"></span><span id="connTxt">conectando…</span></span>
+      <span id="placeBadge">MENU</span>
+    </div>
+
+    <div class="card">
+      <div class="hud3">
+        <div class="metric"><div class="k">score</div><div class="v" id="scorev">0</div></div>
+        <div class="metric"><div class="k">combo</div><div class="v" id="combov">0</div></div>
+        <div class="metric"><div class="k">acc</div><div class="v" id="accv">—</div></div>
+      </div>
+      <div class="metric" style="margin-top:10px">
+        <div class="k">health</div>
+        <div id="healthWrap"><div id="healthBar"></div></div>
+      </div>
+      <div class="metric" style="margin-top:10px">
+        <div class="k">juicio</div>
+        <div class="v sub" id="judgev">sick 0 · good 0 · bad 0 · miss 0</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hudrow">
+        <div class="metric"><div class="k">canción</div><div class="v sub" id="songv">—</div></div>
+        <div class="metric"><div class="k">tempo</div><div class="v sub" id="timev">0.00 s</div></div>
+      </div>
+      <div class="hudrow" style="margin-top:10px">
+        <div class="metric"><div class="k">notas</div><div class="v sub" id="notesv">0</div></div>
+        <div class="metric"><div class="k">resultado</div><div class="v sub" id="resv">—</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="k" style="font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">servicios</div>
+      <div class="svc" id="svc">
+        <span class="pill" id="pEngine">engine</span>
+        <span class="pill" id="pAgent">agent</span>
+        <span class="pill" id="pFrame">frame</span>
+      </div>
+    </div>
+
+    <div class="card controls" id="tokenCard" style="display:none">
+      <div class="row">
+        <label class="field">token (para controlar)
+          <input id="tokenInput" type="password" placeholder="FNF_WEB_TOKEN" autocomplete="off">
+        </label>
+        <button class="good" id="btnTokenSave" type="button">Guardar</button>
+        <button class="ghost" id="btnTokenClear" type="button">Quitar</button>
+      </div>
+    </div>
+
+    <div class="card controls">
+      <div class="row">
+        <label class="field">canción
+          <select id="songSel">
+            <option value="primer-paso" selected>primer-paso</option>
+            <option value="luz-de-neon">luz-de-neon</option>
+            <option value="test">test (corta)</option>
+          </select>
+        </label>
+        <label class="field">dificultad
+          <select id="diffSel">
+            <option value="0" selected>easy</option>
+            <option value="1">normal</option>
+            <option value="2">hard</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label class="field">pistas
+          <select id="sidesSel">
+            <option value="player" selected>solo jugador</option>
+            <option value="both">ambas (2.x)</option>
+          </select>
+        </label>
+        <label class="field">agente
+          <select id="agentSel">
+            <option value="chart" selected>chart (memoria)</option>
+            <option value="observe">observe (solo lanes)</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label class="field">scale
+          <select id="scaleSel">
+            <option value="auto" selected>auto</option>
+            <option value="0.25">0.25 lento</option>
+            <option value="0.5">0.50</option>
+            <option value="0.7">0.70</option>
+            <option value="1">1.00 tiempo real</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <button class="good" id="btnEngineStart" type="button">Arrancar motor</button>
+        <button class="bad" id="btnEngineStop" type="button">Parar motor</button>
+      </div>
+      <div class="row">
+        <button class="primary" id="btnAgentStart" type="button">▶ Jugar (agente)</button>
+        <button class="bad" id="btnAgentStop" type="button">Parar agente</button>
+      </div>
+      <div class="row">
+        <button class="ghost" id="btnDemo" type="button">Demo sin agente (solo motor)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="k" style="font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">pad manual</div>
+      <div id="pad">
+        <span class="sp"></span>
+        <button type="button" data-key="up" aria-label="up">▲</button>
+        <span class="sp"></span>
+        <button type="button" data-key="left" aria-label="left">◀</button>
+        <button type="button" data-key="down" aria-label="down">▼</button>
+        <button type="button" data-key="right" aria-label="right">▶</button>
+      </div>
+    </div>
+
+    <div id="notice" class="hint">Esperando al motor…</div>
+  </div>
+  <footer>FNF-Agent 3.0 · Termux · <span id="bindHint">local</span></footer>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const live = $("live");
+  let busy = false;
+  let actionBusy = false;
+  const TOKEN_KEY = "fnf_web_token";
+  const KEYS = { ArrowLeft: "left", ArrowDown: "down", ArrowUp: "up", ArrowRight: "right" };
+  const held = {};
+
+  function getToken() { return localStorage.getItem(TOKEN_KEY) || ""; }
+  function setToken(t) {
+    if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY);
+  }
+  function hdrs(token) {
+    const h = { "Content-Type": "application/json" };
+    if (token) h["X-Fnf-Token"] = token;
+    return h;
+  }
+
+  async function loadCharts() {
+    try {
+      const r = await fetch("/api/charts");
+      const data = await r.json();
+      const list = (data.charts || []).filter((c) => c.name);
+      if (!list.length) return;
+      const sel = $("songSel");
+      const cur = sel.value;
+      sel.innerHTML = "";
+      list.forEach((c) => {
+        const opt = document.createElement("option");
+        opt.value = c.name;
+        const p = c.diffs && c.diffs.easy ? c.diffs.easy.player : "";
+        opt.textContent = p ? c.name + " (" + p + " notas)" : c.name;
+        sel.appendChild(opt);
+      });
+      if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+    } catch (_) {}
+  }
+
+  function tickFrame() {
+    if (busy) return;
+    busy = true;
+    const im = new Image();
+    im.onload = () => { live.src = im.src; busy = false; };
+    im.onerror = () => { busy = false; };
+    im.src = "/frame?t=" + Date.now();
+  }
+
+  function setHealth(h) {
+    const bar = $("healthBar");
+    const v = Math.max(0, Math.min(1, Number(h) || 0));
+    bar.style.width = (v * 100).toFixed(0) + "%";
+    bar.style.background = v > 0.5 ? "var(--green)" : v > 0.25 ? "var(--yellow)" : "var(--red)";
+  }
+
+  function setPill(id, on, label) {
+    const el = $(id);
+    el.className = "pill " + (on ? "on" : "off");
+    el.textContent = label + (on ? " · on" : " · off");
+  }
+
+  function render(st) {
+    const online = st.engine === "online";
+    $("dot").className = online ? "online" : "offline";
+    $("connTxt").textContent = online ? "motor online" : "motor offline";
+
+    const place = (st.place || "menu").toUpperCase();
+    $("placeBadge").textContent = place;
+    $("placeBadge").style.color = place === "PLAYING" ? "var(--yellow)"
+                          : place === "RESULT" ? "var(--red)"
+                          : "var(--accent)";
+
+    $("scorev").textContent = st.score != null ? st.score : 0;
+    $("combov").textContent = st.combo != null ? st.combo : 0;
+    const acc = Number(st.accuracy);
+    $("accv").textContent = isFinite(acc) ? (acc * 100).toFixed(0) + "%" : "—";
+    setHealth(st.health != null ? st.health : 0.5);
+
+    const j = st.judge || {};
+    $("judgev").textContent =
+      "sick " + (j.sick || 0) + " · good " + (j.good || 0) +
+      " · bad " + (j.bad || 0) + " · miss " + (j.miss || 0);
+
+    const diffs = ["easy", "normal", "hard"];
+    $("songv").textContent = online && st.song
+      ? st.song + (st.diff != null ? " · " + diffs[st.diff] : "") + (st.sides ? " · " + st.sides : "")
+      : "—";
+    const t = Number(st.song_time_ms);
+    $("timev").textContent = (isFinite(t) && t >= 0 ? (t / 1000).toFixed(2) : "0.00") + " s";
+    const opp = st.notes_opponent != null ? "  (opp " + st.notes_opponent + ")" : "";
+    $("notesv").textContent = (st.notes_left != null ? st.notes_left : 0) + " / " + (st.notes_total != null ? st.notes_total : 0) + opp;
+    $("resv").textContent = st.result || "—";
+
+    const svc = st.services || {};
+    setPill("pEngine", !!svc.engine, "engine");
+    setPill("pAgent", !!svc.agent, "agent");
+    setPill("pFrame", !!svc.frame, "frame");
+
+    if (st.bind) $("bindHint").textContent = st.bind;
+
+    const tokenCard = $("tokenCard");
+    if (st.auth === "on") {
+      tokenCard.style.display = "block";
+      if (!getToken()) {
+        $("notice").className = "hint";
+        $("notice").innerHTML = "El visor exige token — introdúcelo arriba para controlar.";
+      }
+    } else {
+      tokenCard.style.display = "none";
+    }
+
+    const notice = $("notice");
+    if (!online) {
+      notice.className = "error";
+      notice.innerHTML = "Motor offline — pulsa <b>Arrancar motor</b> o ejecuta <code>env/start_engine.sh</code>";
+    } else if (svc.agent) {
+      notice.className = "ok";
+      notice.textContent = "Agente jugando — scale " + (Number(st.scale) || 1).toFixed(2);
+    } else if (place === "PLAYING") {
+      notice.className = "hint";
+      notice.textContent = "Partida en curso (pad o demo) — scale " + (Number(st.scale) || 1).toFixed(2);
+    } else if (place === "RESULT") {
+      notice.className = "hint";
+      notice.textContent = st.result || "Fin de partida";
+    } else {
+      notice.className = "hint";
+      notice.textContent = "Listo — elige canción y pulsa ▶ Jugar";
+    }
+  }
+
+  async function post(url, body) {
+    const token = getToken();
+    const r = await fetch(url, {
+      method: "POST",
+      headers: hdrs(token),
+      body: JSON.stringify(body || {}),
+    });
+    if (r.status === 401) {
+      setToken("");
+      $("tokenCard").style.display = "block";
+      $("notice").className = "error";
+      $("notice").textContent = "Token requerido — introdúcelo arriba";
+      return { ok: false, error: "token" };
+    }
+    return r.json();
+  }
+
+  async function withAction(fn) {
+    if (actionBusy) return;
+    actionBusy = true;
+    ["btnEngineStart","btnEngineStop","btnAgentStart","btnAgentStop","btnDemo"].forEach((id) => {
+      $(id).disabled = true;
+    });
+    try { await fn(); }
+    catch (e) {
+      $("notice").className = "error";
+      $("notice").textContent = "Error: " + (e.message || e);
+    } finally {
+      actionBusy = false;
+      ["btnEngineStart","btnEngineStop","btnAgentStart","btnAgentStop","btnDemo"].forEach((id) => {
+        $(id).disabled = false;
+      });
+    }
+  }
+
+  function gameOpts() {
+    const scale = $("scaleSel").value;
+    const o = {
+      song: $("songSel").value,
+      diff: Number($("diffSel").value),
+      sides: $("sidesSel").value,
+      agent: $("agentSel").value,
+    };
+    if (scale !== "auto") o.scale = Number(scale);
+    return o;
+  }
+
+  $("btnEngineStart").onclick = () => withAction(async () => {
+    const res = await post("/api/engine/start");
+    $("notice").className = res.ok ? "ok" : "error";
+    $("notice").textContent = res.ok ? "Motor arrancado" : (res.out || "falló al arrancar motor");
+  });
+
+  $("btnEngineStop").onclick = () => withAction(async () => {
+    await post("/api/agent/stop");
+    const res = await post("/api/engine/stop");
+    $("notice").className = res.ok ? "ok" : "error";
+    $("notice").textContent = res.ok ? "Motor detenido" : (res.out || "falló al parar motor");
+  });
+
+  $("btnAgentStart").onclick = () => withAction(async () => {
+    const o = gameOpts();
+    const res = await post("/api/agent/start", o);
+    $("notice").className = res.ok ? "ok" : "error";
+    $("notice").textContent = res.ok
+      ? "Agente " + o.agent + " (" + o.song + ", " + o.sides + ")"
+      : (res.out || res.error || "falló al lanzar agente");
+  });
+
+  $("btnAgentStop").onclick = () => withAction(async () => {
+    const res = await post("/api/agent/stop");
+    $("notice").className = res.ok ? "ok" : "error";
+    $("notice").textContent = res.ok ? "Agente detenido" : (res.out || "falló");
+  });
+
+  $("btnDemo").onclick = () => withAction(async () => {
+    const o = gameOpts();
+    const eng = await post("/api/engine/start");
+    if (!eng.ok && !(eng.out || "").includes("ya está")) {
+      $("notice").className = "error";
+      $("notice").textContent = eng.out || "no se pudo arrancar motor";
+      return;
+    }
+    const res = await post("/api/game/start", {
+      song: o.song, diff: o.diff, sides: o.sides, scale: o.scale || 0.35,
+    });
+    $("notice").className = res.ok ? "ok" : "error";
+    $("notice").textContent = res.ok
+      ? "Demo: " + o.song + " — usa el pad o el teclado"
+      : (res.error || "error demo");
+  });
+
+  $("btnTokenSave").onclick = () => {
+    const t = $("tokenInput").value.trim();
+    if (!t) { $("notice").className = "error"; $("notice").textContent = "Token vacío"; return; }
+    setToken(t);
+    $("tokenInput").value = "";
+    $("notice").className = "ok";
+    $("notice").textContent = "Token guardado";
+  };
+  $("btnTokenClear").onclick = () => {
+    setToken("");
+    $("tokenInput").value = "";
+    $("notice").className = "hint";
+    $("notice").textContent = "Token eliminado";
+  };
+
+  async function sendKey(key, down) {
+    if (held[key] === down) return;
+    held[key] = down;
+    try { await post("/api/input", { key, down }); } catch (_) {}
+  }
+
+  document.querySelectorAll("#pad button[data-key]").forEach((btn) => {
+    const key = btn.getAttribute("data-key");
+    const start = (ev) => { ev.preventDefault(); sendKey(key, true); };
+    const end = (ev) => { ev.preventDefault(); sendKey(key, false); };
+    btn.addEventListener("pointerdown", start);
+    btn.addEventListener("pointerup", end);
+    btn.addEventListener("pointercancel", end);
+    btn.addEventListener("pointerleave", end);
+  });
+
+  window.addEventListener("keydown", (ev) => {
+    const key = KEYS[ev.key];
+    if (!key || ev.repeat) return;
+    ev.preventDefault();
+    sendKey(key, true);
+  });
+  window.addEventListener("keyup", (ev) => {
+    const key = KEYS[ev.key];
+    if (!key) return;
+    ev.preventDefault();
+    sendKey(key, false);
+  });
+
+  setInterval(tickFrame, 100);
+  setInterval(async () => {
+    try {
+      const r = await fetch("/api/status");
+      render(await r.json());
+    } catch (_) {
+      render({ engine: "offline", services: {} });
+    }
+  }, 500);
+
+  loadCharts();
+  tickFrame();
+})();
+</script>
+</body>
+</html>

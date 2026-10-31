@@ -1,0 +1,12 @@
+{
+ "name": "FNF-Agent · juego de ritmo para personas e IAs",
+ "short_name": "FNF-Agent",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "any",
+ "background_color": "#0d0a1f",
+ "theme_color": "#0d0a1f",
+ "lang": "es",
+ "icons": [{ "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

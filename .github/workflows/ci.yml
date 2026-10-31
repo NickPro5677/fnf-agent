@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, v4]
   pull_request:
 
 permissions:
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
       - uses: actions/setup-python@v5
         with:
@@ -23,6 +23,14 @@ jobs:
       - name: Instalar dependencias
         run: |
           npm ci
-          python -m pip install pillow
-      - name: Revisión rápida
-        run: bash check.sh --quick
+          python -m pip install pytest pillow
+          npx playwright install --with-deps chromium
+      - name: Todas las pruebas (JS, Python, legacy, e2e)
+        run: bash check.sh
+      - name: Subir reportes si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          if-no-files-found: ignore

@@ -1,69 +1,80 @@
-# FNF-Agent 3.0
+# FNF-Agent 4.0
 
-Plataforma **local** (Termux / Android) para jugar y evaluar agentes sobre
-Friday Night Funkin'. Motor en Python (PIL), agentes en Node, visor HTTP.
+Un juego de ritmo para el navegador, al estilo de Friday Night Funkin', **hecho para que una IA pueda jugarlo**.
+Funciona en el teléfono (flechas táctiles) y en la PC (teclado). No necesita instalar nada para jugar.
 
-- **Motor fiel en mecánica**: notas de jugador (`d` 0–3) vs oponente (`d` 4–7),
-  juicios sick/good/bad/miss, health y score creíbles. Arte ligero, sin audio.
-- **Agentes enchufables**: `chart` (memoria del JSON) y `observe` (solo el
-  estado del motor). El bot local habla al socket; no pasa por MCP.
-- **Visor** en el móvil: vídeo, HUD, pad táctil y controles.
-- **MCP** opcional para clientes externos.
+> Idea original de **@NickPro5677**: un entorno donde agentes de IA aprenden y compiten tocando flechas al ritmo.
+> La versión 4 rehace todo en el navegador, pero la idea es la misma. El motor viejo en Python sigue en [`legacy/`](legacy/).
 
-No hay LLM en el bucle de notas (se eliminó en v2: ~10 s/decisión).
+<p><img src="docs/img/movil-manual.png" alt="Jugando en el teléfono" width="240"> <img src="docs/img/ia-externa.png" alt="Una IA externa jugando, con su panel de decisiones" width="240"></p>
 
-## Arranque
+![Bot con el panel de IA en la PC](docs/img/bot-panel-ia.png)
 
-```sh
-pkg install python python-pillow nodejs
-cd ~/fnf-agent   # o la ruta de este repo
-npm install
-bash start_all.sh
-```
+[English version](README.en.md)
 
-Abre `http://127.0.0.1:8787`. Elige canción y pulsa **▶ Jugar**.
+## Qué trae
 
-Para LAN: `FNF_WEB_HOST=0.0.0.0 bash start_all.sh` y define `FNF_WEB_TOKEN`.
+- **3 canciones originales** (libres, CC0), cada una en fácil, normal y difícil.
+- **Quién juega:** tú, un bot perfecto, un bot "humano" que se equivoca, o **tu propia IA** conectada por WebSocket.
+- Panel en vivo que muestra **qué decide la IA y por qué**.
+- Puntos, precisión, combo, barra de vida, calificaciones (¡Sick!, Good, Bad, Miss) y pantalla de resultados.
+- Carga **tu propio chart** (JSON de FNF clásico, Psych Engine o v2) y **tu propio audio**.
+- Funciona **sin internet** después de la primera visita, y se puede "instalar" en el teléfono.
+- En español e inglés.
 
-Parar: `bash stop_all.sh`.
-
-Solo terminal:
+## Jugar en Termux (Android)
 
 ```sh
-bash env/start_engine.sh
-FNF_SONG=test FNF_AGENT=chart node bot/bot_loop.js
+pkg install python git
+git clone https://github.com/NickPro5677/fnf-agent
+cd fnf-agent
+python -m http.server 8000 -d web
 ```
 
-## Migración desde 2.x
+Abre **http://127.0.0.1:8000** en el navegador del teléfono. Elige canción y toca **▶ Jugar**.
 
-| 2.x | 3.0 |
+## Conectar una IA (en otra sesión de Termux)
+
+Desliza desde la izquierda en Termux → **New session**, y en cada una:
+
+```sh
+cd fnf-agent
+python agente/relay.py           # sesión 2: el "puente" en ws://127.0.0.1:8765
+python agente/agente_chart.py    # sesión 3: una IA que lee el chart y toca a tiempo
+```
+
+En el juego elige **IA externa** y toca **Jugar**. Verás sus decisiones en el panel.
+
+Otras IAs de ejemplo:
+
+| Archivo | Qué hace |
 |---|---|
-| Todas las notas eran jugables (`d % 4`) | Default `FNF_SIDES=player` (solo boyfriend) |
-| Ventanas 150 / 300 ms | 45 / 90 / 135 / 180 ms |
-| Visor en `0.0.0.0` | Visor en `127.0.0.1` |
-| Bot lanzaba MCP | Bot → socket directo |
+| `agente/agente_chart.py` | Recibe todas las notas al inicio y las toca en el momento justo. |
+| `agente/agente_observe.py` | Solo mira lo que llega cerca y reacciona (como un jugador). |
+| `agente/ejemplo_llm.py` | Plantilla para conectar un modelo de lenguaje (usa `FNF_LLM_URL` y `FNF_LLM_KEY`). Sin eso, usa un modelo falso de prueba. |
 
-`FNF_SIDES=both` restaura el recuento 2.x.
+Para escribir la tuya: [docs/crear-tu-agente.md](docs/crear-tu-agente.md). Mensajes exactos: [docs/protocolo.md](docs/protocolo.md).
+Formatos de chart: [docs/charts.md](docs/charts.md).
 
-## Documentación
+## Reglas del juego
 
-| Documento | Contenido |
-|---|---|
-| [docs/arquitectura.md](docs/arquitectura.md) | Procesos, IPC, por qué MCP es opcional |
-| [docs/motor.md](docs/motor.md) | Ventanas, sides, scoring, socket |
-| [docs/agentes.md](docs/agentes.md) | `chart`, `observe`, cómo añadir uno |
-| [docs/charts.md](docs/charts.md) | Formato v2.0.0, cómo añadir canciones |
-| [docs/visor.md](docs/visor.md) | Rutas, token, pad |
-| [docs/mcp.md](docs/mcp.md) | Tools para clientes externos |
-| [docs/desarrollo.md](docs/desarrollo.md) | Tests, `check.sh`, convenciones |
-| [.env.example](.env.example) | Todas las variables `FNF_*` |
+Ventanas de tiempo (iguales que en la versión 3): **Sick ≤ 45 ms, Good ≤ 90, Bad ≤ 135, Miss > 135** (hasta 180).
+Tocar sin nota no castiga. Si la vida llega a 0, pierdes.
+
+## Para programadores
 
 ```sh
-bash check.sh --quick   # sintaxis + tests
-bash check.sh           # + motor + visor + MCP
+npm ci
+npx playwright install chromium   # solo para las pruebas e2e (en PC)
+./check.sh --quick                # JS + Python + legacy
+./check.sh                        # todo, con e2e en Chromium
 ```
+
+Estructura: `web/` (juego, sin compilar, módulos ES), `agente/` (relay y agentes en Python, solo librería estándar),
+`mcp/` (servidor MCP para que un asistente juegue), `tests/`, `tools/generar_canciones.mjs`, `legacy/` (versión 3).
+
+Cambios y cómo pasar de la v3: [CHANGELOG.md](CHANGELOG.md).
 
 ## Licencia
 
-MIT. Friday Night Funkin' y sus charts oficiales pertenecen a sus autores.
-Este repo no incluye audio ni sprites de Newgrounds.
+MIT. Las canciones de demo son originales y CC0. Este proyecto no incluye material de Friday Night Funkin'.
