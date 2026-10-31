@@ -192,3 +192,27 @@ body.menos-efectos *, body.menos-efectos *::before, body.menos-efectos *::after 
 .vs td.gana { color: #3ef08a; font-weight: 700; }
 #op-personalizado { margin-top: .4rem; }
 #semilla { width: 8rem; }
+
+/* Ajustes de IA externa */
+.sub { font-family: var(--display); font-size: 1rem; margin: .2rem 0 .5rem; }
+.rejilla-ia { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .55rem .9rem; }
+.rejilla-ia .campo { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+.rejilla-ia .campo.ancho { grid-column: 1 / -1; }
+.rejilla-ia .campo input[type=text], .rejilla-ia .campo input[type=password], .rejilla-ia .campo select { width: 100%; }
+.rejilla-ia .fila { flex-wrap: nowrap; }
+.rejilla-ia .fila input { flex: 1; min-width: 0; }
+.mini { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; min-height: 44px; }
+.botones-ia { margin-top: .7rem; flex-wrap: wrap; }
+.perfiles-ia { margin-top: .6rem; }
+.perfiles-ia .fila { margin-top: .45rem; flex-wrap: wrap; }
+.perfiles-ia .fila input, .perfiles-ia .fila select { flex: 1 1 10rem; min-width: 0; }
+.boton { display: inline-flex; align-items: center; justify-content: center; }
+.perfiles-ia input[type=file]:focus-visible + label, .boton:focus-within { outline: 3px solid var(--acento2); }
+.log-ia { list-style: none; margin: 0; padding: .45rem .6rem; max-height: 9.5rem; overflow-y: auto; background: #0b0820; border: 1px solid var(--borde); border-radius: var(--radio-s); font: .78rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.log-ia ol { list-style: none; margin: 0; padding: 0; }
+.log-ia ol:empty::before { content: "—"; color: var(--suave); }
+.log-ia time { color: var(--suave); }
+.log-ia li { overflow-wrap: anywhere; }
+.log-ia .log-ok span { color: #3ef08a; }
+.log-ia .log-error span { color: #ff8fa3; }
+.log-ia .log-aviso span { color: #ffd84f; }

@@ -6,6 +6,7 @@ import { JugadorHumano } from "./jugadores/humano.js";
 import { JugadorBot } from "./jugadores/bot.js";
 import { estadisticas, histograma, guardarMejor, leerMejor, guardarBot, leerBot } from "./vista/estadisticas.js";
 import { JugadorRemoto } from "./jugadores/remoto.js";
+import * as ia from "./vista/ajustes-ia.js";
 import { Lienzo, COLORES } from "./vista/lienzo.js";
 import { carrilMasCercano, carrilPorFranja } from "./jugadores/tactil.js";
 import { Musica } from "./audio/musica.js";
@@ -60,7 +61,7 @@ function guardar() {
   Object.assign(ajustes, {
     cancion: seleccion, jugador: tipoJugador(), dificultad: $("#dificultad").value,
     perfil: $("#perfil").value, semilla: $("#semilla").value, personalizado: leerPersonalizado(), velocidad: +$("#velocidad").value, retraso: +$("#retraso").value,
-    sonido: $("#sonido").checked, url: $("#url-relay").value,
+    sonido: $("#sonido").checked,
     padModo: $("#pad-modo").value, downscroll: $("#downscroll").value, padAlto: +$("#pad-alto").value,
     padOpacidad: +$("#pad-opacidad").value, vibrar: $("#vibrar").checked, menosEfectos: $("#menos-efectos").checked,
   });
@@ -111,19 +112,29 @@ function aplicarAjustes() {
   if (ajustes.menosEfectos != null) $("#menos-efectos").checked = ajustes.menosEfectos;
   else if (matchMedia("(prefers-reduced-motion: reduce)").matches) $("#menos-efectos").checked = true;
   if (ajustes.sonido != null) $("#sonido").checked = ajustes.sonido;
-  if (ajustes.url) $("#url-relay").value = ajustes.url;
+  if (ajustes.url) ia.ponerCampos(ia.partirUrl(ajustes.url)); // ajuste de la 4.0
+  ia.cargarActual();
+  ia.pintarPerfiles();
   const q = new URLSearchParams(location.search);
-  if (q.get("relay")) $("#url-relay").value = q.get("relay");
+  if (q.get("relay")) ia.ponerCampos(ia.partirUrl(q.get("relay")));
   if (q.get("jugador")) { const r = document.querySelector(`input[name=jugador][value=${q.get("jugador")}]`); if (r) r.checked = true; }
   actualizarOpciones();
+}
+
+function nuevoRemoto() {
+  const c = ia.leerCampos();
+  ia.guardarActual();
+  if (!c.token) throw new Error(traducir("falta-token"));
+  return new JugadorRemoto({ url: ia.unirUrl(c.host, c.puerto), token: c.token, hz: c.hz, lookahead: c.lookahead, modo: c.modo, compensacion: c.compensacion, log: ia.anotar });
 }
 
 async function conectarRelay() {
   const estado = $("#estado-relay");
   remoto?.cerrar();
-  remoto = new JugadorRemoto({ url: $("#url-relay").value.trim() });
+  remoto = null;
   estado.textContent = traducir("conectando");
   try {
+    remoto = nuevoRemoto();
     await remoto.abrir(({ conectado, agentes, nombres }) => {
       estado.textContent = conectado
         ? `${traducir("conectado")} · ${agentes} ${traducir("agentes")}${nombres?.length ? ": " + nombres.join(", ") : ""}`
@@ -133,9 +144,26 @@ async function conectarRelay() {
     return true;
   } catch (e) {
     estado.textContent = `⚠ ${e.message}. ${traducir("relay-ayuda-corta")}`;
+    ia.anotar(`⚠ ${e.message}`, "error");
+    remoto?.cerrar();
     remoto = null;
     return false;
   }
+}
+
+// Probar conexión: conecta, mide 3 pings al relay y dice cuántos agentes hay. Deja la conexión abierta.
+async function probarConexion() {
+  const btn = $("#btn-probar");
+  btn.disabled = true;
+  try {
+    if (!(await conectarRelay())) return;
+    const rtts = [];
+    for (let i = 0; i < 3; i++) { const r = await remoto.medirRelay(); if (r != null) rtts.push(r); }
+    const ms = rtts.length ? Math.min(...rtts) : null;
+    const texto = `${traducir("prueba-ok")} · ${ms != null ? `ping ${ms.toFixed(1)} ms` : "sin ping"} · ${remoto.agentes} ${traducir("agentes")}`;
+    ia.anotar(`✓ ${texto}`, "ok");
+    $("#estado-relay").textContent = `✓ ${texto}${remoto.agentes ? "" : ` · ${traducir("sin-agentes")}`}`;
+  } finally { btn.disabled = false; }
 }
 
 // ---------- partida ----------
@@ -270,14 +298,15 @@ async function empezar() {
     };
     const ctx = {
       juego, cancion: chart.titulo,
-      presionar(lane, motivo = "") {
+      ahora,
+      presionar(lane, motivo = "", t = ahora()) {
         if (jugador.tipo !== "humano") {
           partida.ultimaDecision[lane] = anotarDecision(lane, motivo);
           lienzo.rayo(lane, motivo.length < 18 ? motivo : "", COLORES[lane]);
         }
-        manejar(juego.presionar(lane, ahora()));
+        manejar(juego.presionar(lane, Math.min(t, ahora())));
       },
-      soltar(lane) { juego.soltar(lane, ahora()).forEach(manejar); },
+      soltar(lane, t = ahora()) { juego.soltar(lane, Math.min(t, ahora())).forEach(manejar); },
       pensar(texto) { $("#panel-ia-piensa").textContent = texto; },
     };
     partida.ctx = ctx;
@@ -463,6 +492,29 @@ $("#archivo-audio").addEventListener("change", async (e) => {
 document.querySelectorAll("input[name=jugador]").forEach((r) => r.addEventListener("change", actualizarOpciones));
 ["#perfil", "#semilla", "#pz-sigma", "#pz-sesgo", "#pz-cansancio", "#pz-presion", "#pz-salto", "#velocidad", "#retraso", "#dificultad", "#sonido", "#pad-modo", "#downscroll", "#pad-alto", "#pad-opacidad", "#vibrar", "#ver-zonas", "#menos-efectos"].forEach((s) => $(s).addEventListener("input", actualizarOpciones));
 $("#btn-conectar").addEventListener("click", conectarRelay);
+$("#btn-probar").addEventListener("click", probarConexion);
+["#url-relay", "#puerto-relay", "#token-relay", "#modo-ia", "#hz-ia", "#lookahead-ia", "#comp-ia", "#comp-ms", "#token-ver"].forEach((s) => $(s).addEventListener("input", () => { ia.pintarValores(); ia.guardarActual(); }));
+$("#perfil-ia").addEventListener("change", (e) => { if (ia.usarPerfil(e.target.value)) { ia.guardarActual(); ia.anotar(`${traducir("perfil-usado")}: ${e.target.value}`); } });
+$("#btn-perfil-guardar").addEventListener("click", () => {
+  try { const n = ia.guardarPerfil($("#perfil-ia-nombre").value); ia.anotar(`${traducir("perfil-guardado")}: ${n}`, "ok"); $("#perfil-ia-nombre").value = ""; }
+  catch (e) { ia.anotar(`⚠ ${e.message}`, "error"); }
+});
+$("#btn-perfil-borrar").addEventListener("click", () => { const n = $("#perfil-ia").value; if (n) { ia.borrarPerfil(n); ia.anotar(`${traducir("perfil-borrado")}: ${n}`); } });
+$("#btn-perfil-exportar").addEventListener("click", () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([ia.exportarPerfiles()], { type: "application/json" }));
+  a.download = "fnf-agent-perfiles-ia.json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  ia.anotar(traducir("perfiles-exportados"), "ok");
+});
+$("#perfil-ia-importar").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try { const n = ia.importarPerfiles(await f.text()); ia.anotar(`${traducir("perfiles-importados")}: ${n}`, "ok"); }
+  catch (err) { ia.anotar(`⚠ ${err.message}`, "error"); }
+  e.target.value = "";
+});
 $("#btn-jugar").addEventListener("click", empezar);
 $("#btn-repetir").addEventListener("click", () => { $("#resultados").close(); empezar(); });
 $("#btn-menu").addEventListener("click", volverAlMenu);
