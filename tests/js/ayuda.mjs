@@ -12,8 +12,9 @@ export function simular(chart, jugador, { paso = 1000 / 60, opciones = {} } = {}
   const eventos = [];
   const ctx = {
     juego, cancion: chart.titulo,
-    presionar: (lane) => { const e = juego.presionar(lane); if (e) eventos.push(e); },
-    soltar: (lane) => eventos.push(...juego.soltar(lane)),
+    ahora: () => juego.t,
+    presionar: (lane, _m, t = juego.t) => { const e = juego.presionar(lane, Math.min(t, juego.t)); if (e) eventos.push(e); },
+    soltar: (lane, t = juego.t) => eventos.push(...juego.soltar(lane, Math.min(t, juego.t))),
     pensar: () => {},
   };
   jugador.conectar(ctx);
