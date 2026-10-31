@@ -15,9 +15,9 @@ try {
     await preparar(page, { cancion: "luz-de-neon", dificultad: "normal", jugador: "remoto" });
     await conectarIA(page, puerto, { token: "token-malo" });
     await page.waitForFunction(() => /token/i.test(document.querySelector("#ia-log").textContent));
+    await page.evaluate(() => { for (const d of document.querySelectorAll("#op-remoto details")) d.open = true; });
     await page.fill("#perfil-ia-nombre", "Teléfono");
     await page.click("#btn-perfil-guardar");
-    await page.evaluate(() => { for (const d of document.querySelectorAll("#op-remoto details")) d.open = true; });
     await conectarIA(page, puerto);
     await page.click("#btn-probar");
     await page.waitForFunction(() => /ping \d/.test(document.querySelector("#ia-log").textContent));
