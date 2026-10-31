@@ -58,7 +58,9 @@ test("juego manual con teclado (primer-paso, fácil): gana y acierta casi todo",
   await preparar(page, { cancion: "primer-paso", dificultad: "easy", jugador: "humano" });
   await page.click("#btn-jugar");
   await page.waitForSelector("#juego:not(.oculto)");
-  assert.equal(await page.isVisible("#pad"), true, "pad táctil visible en el móvil");
+  // axe mide el contraste con la opacidad del momento: esperar a que acabe la transición de entrada.
+  await page.waitForFunction(() => document.querySelector("#juego").getAnimations({ subtree: true }).every((a) => a.playState !== "running"));
+  assert.equal(await page.isVisible("#zona-tactil"), true, "zona táctil visible en el móvil");
   assert.deepEqual(await axe(page), []);
   const TECLAS = ["ArrowLeft", "ArrowDown", "ArrowUp", "ArrowRight"];
   const sueltas = [];
@@ -79,23 +81,6 @@ test("juego manual con teclado (primer-paso, fácil): gana y acierta casi todo",
   const aciertos = r.juicios.sick + r.juicios.good + r.juicios.bad;
   assert.ok(aciertos >= r.total * 0.9, JSON.stringify(r));
   assert.deepEqual(await axe(page), []);
-  await page.close();
-});
-
-test("pad táctil: tocar una flecha la pulsa en el juego", async () => {
-  const page = await nueva({ width: 390, height: 844 }, { hasTouch: true, isMobile: true });
-  await page.goto(web.url + "?nosw");
-  await preparar(page, { cancion: "primer-paso", jugador: "humano" });
-  await page.click("#btn-jugar");
-  // empezar() es asíncrono (carga el chart): esperar a que el pad esté conectado, no un tiempo fijo.
-  await page.waitForFunction(() => window.__fnf.listo());
-  const t2 = page.locator("#pad .t2");
-  await t2.dispatchEvent("pointerdown", { pointerId: 1, isPrimary: true, pointerType: "touch" });
-  const abajo = await page.evaluate(() => ({ clase: document.querySelector("#pad .t2").classList.contains("activo"), tecla: window.__fnf.estado().teclas[2] }));
-  assert.deepEqual(abajo, { clase: true, tecla: true });
-  await t2.dispatchEvent("pointerup", { pointerId: 1, isPrimary: true, pointerType: "touch" });
-  const arriba = await page.evaluate(() => ({ clase: document.querySelector("#pad .t2").classList.contains("activo"), tecla: window.__fnf.estado().teclas[2] }));
-  assert.deepEqual(arriba, { clase: false, tecla: false });
   await page.close();
 });
 

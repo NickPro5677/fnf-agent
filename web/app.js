@@ -6,6 +6,7 @@ import { JugadorHumano } from "./jugadores/humano.js";
 import { JugadorBot } from "./jugadores/bot.js";
 import { JugadorRemoto } from "./jugadores/remoto.js";
 import { Lienzo, COLORES } from "./vista/lienzo.js";
+import { carrilMasCercano, carrilPorFranja } from "./jugadores/tactil.js";
 import { Musica } from "./audio/musica.js";
 import { traducir, idioma, cambiarIdioma } from "./i18n.js";
 
@@ -22,6 +23,9 @@ let seleccion = ajustes.cancion || "primer-paso";
 let propia = null; // { json, nombre }
 let remoto = null;
 let partida = null;
+// Teléfono o tableta: pantalla táctil o estrecha.
+const esTactil = () => matchMedia("(pointer: coarse), (max-width: 700px)").matches;
+let verZonas = false;
 
 // ---------- menú ----------
 async function cargarLista() {
@@ -56,6 +60,8 @@ function guardar() {
     cancion: seleccion, jugador: tipoJugador(), dificultad: $("#dificultad").value,
     precision: +$("#precision").value, velocidad: +$("#velocidad").value, retraso: +$("#retraso").value,
     sonido: $("#sonido").checked, url: $("#url-relay").value,
+    padModo: $("#pad-modo").value, downscroll: $("#downscroll").value, padAlto: +$("#pad-alto").value,
+    padOpacidad: +$("#pad-opacidad").value, vibrar: $("#vibrar").checked, menosEfectos: $("#menos-efectos").checked,
   });
   localStorage.setItem("fnf-ajustes", JSON.stringify(ajustes));
 }
@@ -69,6 +75,10 @@ function actualizarOpciones() {
   $("#precision-val").textContent = `${$("#precision").value} %`;
   $("#velocidad-val").textContent = `${(+$("#velocidad").value).toFixed(1)}×`;
   $("#retraso-val").textContent = `${$("#retraso").value} ms`;
+  $("#pad-alto-val").textContent = `${$("#pad-alto").value} %`;
+  $("#pad-opacidad-val").textContent = `${$("#pad-opacidad").value} %`;
+  verZonas = $("#ver-zonas").checked;
+  document.body.classList.toggle("menos-efectos", $("#menos-efectos").checked);
   guardar();
 }
 
@@ -76,6 +86,13 @@ function aplicarAjustes() {
   if (ajustes.jugador) { const r = document.querySelector(`input[name=jugador][value=${ajustes.jugador}]`); if (r) r.checked = true; }
   if (ajustes.dificultad) $("#dificultad").value = ajustes.dificultad;
   for (const k of ["precision", "velocidad", "retraso"]) if (ajustes[k] != null) $("#" + k).value = ajustes[k];
+  if (ajustes.padModo) $("#pad-modo").value = ajustes.padModo;
+  if (ajustes.downscroll) $("#downscroll").value = ajustes.downscroll;
+  if (ajustes.padAlto != null) $("#pad-alto").value = ajustes.padAlto;
+  if (ajustes.padOpacidad != null) $("#pad-opacidad").value = ajustes.padOpacidad;
+  if (ajustes.vibrar != null) $("#vibrar").checked = ajustes.vibrar;
+  if (ajustes.menosEfectos != null) $("#menos-efectos").checked = ajustes.menosEfectos;
+  else if (matchMedia("(prefers-reduced-motion: reduce)").matches) $("#menos-efectos").checked = true;
   if (ajustes.sonido != null) $("#sonido").checked = ajustes.sonido;
   if (ajustes.url) $("#url-relay").value = ajustes.url;
   const q = new URLSearchParams(location.search);
@@ -120,7 +137,39 @@ async function crearJugador() {
     if (!remoto && !(await conectarRelay())) return null;
     return remoto;
   }
-  return new JugadorHumano({ botones: [...document.querySelectorAll("#pad .tecla")] });
+  const columnas = $("#pad-modo").value !== "botones";
+  return new JugadorHumano({
+    zonas: [columnas ? $("#zona-tactil") : $("#pad")],
+    carrilEn: (el, e) => {
+      const r = el.getBoundingClientRect();
+      if (!columnas) return carrilPorFranja(e.clientX - r.left, r.width);
+      const lr = $("#lienzo").getBoundingClientRect();
+      return carrilMasCercano(e.clientX - lr.left, lienzo.geometria(reservaPanel()).jugador);
+    },
+    vibrar: () => $("#vibrar").checked,
+    alCambiar: (cuenta) => {
+      if (partida) partida.pulsadas = [...cuenta];
+      if (!columnas) $("#pad").querySelectorAll(".tecla").forEach((b, i) => b.classList.toggle("activo", cuenta[i] > 0));
+    },
+  });
+}
+
+// Modo de pantalla de la partida: pad táctil, downscroll y alto de la zona.
+function modoPantalla(jugador) {
+  const tactil = esTactil() && jugador.tipo === "humano";
+  const ds = $("#downscroll").value;
+  const columnas = $("#pad-modo").value !== "botones";
+  return {
+    tactil, columnas,
+    downscroll: ds === "si" || (ds === "auto" && esTactil()),
+    soloJugador: tactil,
+    alto: +$("#pad-alto").value / 100,
+  };
+}
+
+function zonaPx() {
+  if (!partida?.modo.tactil || !partida.modo.columnas) return 0;
+  return Math.round($("#lienzo").getBoundingClientRect().height * partida.modo.alto);
 }
 
 // Ancho (px) que ocupa el panel de la IA a la izquierda, para que no tape ningún carril.
@@ -165,18 +214,23 @@ async function empezar() {
     const cuenta = Math.max(1600, beat * 4);
     const retraso = +$("#retraso").value;
     const velocidad = chart.velocidad * +$("#velocidad").value;
-    $("#menu").classList.add("oculto");
-    $("#juego").classList.remove("oculto");
-    document.body.classList.toggle("sin-pad", jugador.tipo !== "humano");
+    const modo = modoPantalla(jugador);
+    mostrarPantalla("#juego");
+    document.body.classList.add("en-juego");
+    document.body.classList.toggle("sin-pad", !modo.tactil || modo.columnas);
+    $("#zona-tactil").classList.toggle("oculto", !(modo.tactil && modo.columnas));
+    $("#zona-tactil").style.height = `${modo.alto * 100}%`;
+    $("#pad").style.setProperty("--opacidad", String(0.25 + 0.75 * (+$("#pad-opacidad").value / 100)));
     $("#resultados").open && $("#resultados").close();
-    partida = { juego, jugador, chart, id, info, velocidad, inicio: performance.now() + cuenta, retraso, ultimaDecision: [] };
+    partida = { juego, jugador, chart, id, info, velocidad, inicio: performance.now() + cuenta, retraso, ultimaDecision: [], modo, tiempos: [], pulsadas: [0, 0, 0, 0] };
     const ahora = () => performance.now() - partida.inicio - partida.retraso;
     const manejar = (ev) => {
       if (!ev) return;
       jugador.evento?.(ev);
       if (ev.tipo === "juicio") {
+        partida.tiempos.push({ t: juego.t, d: ev.desfase ?? null, j: ev.juicio });
         lienzo.efecto({ tipo: "popup", texto: TEXTO_JUICIO[ev.juicio], color: COLOR_JUICIO[ev.juicio], combo: juego.combo });
-        if (ev.juicio !== "miss") lienzo.efecto({ tipo: "destello", lane: ev.lane });
+        if (ev.juicio !== "miss") lienzo.efecto({ tipo: "destello", lane: ev.lane, fuerza: ev.juicio === "sick" ? 1.4 : 1 });
         else if ($("#sonido").checked) musica.fallo();
         const li = partida.ultimaDecision[ev.lane];
         if (li && !li.dataset.listo) {
@@ -225,7 +279,10 @@ function bucle() {
     juego.actualizar(t).forEach(partida.manejar);
     if (!juego.resultado) jugador.cuadro(t);
   }
-  lienzo.dibujar(juego, t, { velocidad: partida.velocidad, bpm: partida.chart.bpm, color: partida.info.color || "#7c5cff", mostrarIA: jugador.tipo !== "humano", reserva: reservaPanel() });
+  lienzo.dibujar(juego, t, { velocidad: partida.velocidad, bpm: partida.chart.bpm, color: partida.info.color || "#7c5cff", mostrarIA: jugador.tipo !== "humano", reserva: reservaPanel(),
+    soloJugador: partida.modo.soloJugador, downscroll: partida.modo.downscroll, zona: zonaPx(), verZonas,
+    menosEfectos: $("#menos-efectos").checked, pulsadas: partida.pulsadas, opacidad: +$("#pad-opacidad").value / 100 });
+  contarCuadro();
   const r = juego.resumen();
   pon("#hud-puntos", r.puntos.toLocaleString(idioma()));
   pon("#hud-precision", `${(r.precision * 100).toFixed(1)} %`);
@@ -250,6 +307,8 @@ function terminar(mostrar) {
     $("#res-precision").textContent = `${(r.precision * 100).toFixed(2)} %`;
     $("#res-combo").textContent = `${r.comboMax}${r.fullCombo ? " FC" : ""}`;
     for (const k of ["sick", "good", "bad", "miss"]) $(`#res-${k}`).textContent = r.juicios[k];
+    pintarDonut(r.juicios);
+    pintarGrafica(partida.tiempos, partida.juego.notas.at(-1)?.t || 1);
     $("#res-quien").textContent = `${traducir("jugo")}: ${quien} · ${partida.chart.titulo} (${partida.chart.dificultad})`;
     $("#resultados").showModal();
   }
@@ -258,12 +317,57 @@ function terminar(mostrar) {
   else partida.terminada = true;
 }
 
+// Anillo con el reparto de juicios.
+function pintarDonut(j) {
+  const total = j.sick + j.good + j.bad + j.miss || 1;
+  const col = { sick: "#6ef3ff", good: "#3ef08a", bad: "#ffd84f", miss: "#ff7b93" };
+  let acum = 0, html = '<circle cx="21" cy="21" r="15.9" fill="none" stroke="#ffffff14" stroke-width="5"/>';
+  for (const k of ["sick", "good", "bad", "miss"]) {
+    const p = (j[k] / total) * 100;
+    if (p > 0) html += `<circle cx="21" cy="21" r="15.9" fill="none" stroke="${col[k]}" stroke-width="5" stroke-dasharray="${p.toFixed(2)} ${(100 - p).toFixed(2)}" stroke-dashoffset="${(25 - acum).toFixed(2)}"/>`;
+    acum += p;
+  }
+  $("#res-donut").innerHTML = html;
+  $("#res-donut").setAttribute("aria-label", `Sick ${j.sick}, Good ${j.good}, Bad ${j.bad}, Miss ${j.miss}`);
+}
+
+// Dispersión del desfase de cada nota a lo largo de la canción.
+function pintarGrafica(tiempos, dur) {
+  const col = { sick: "#6ef3ff", good: "#3ef08a", bad: "#ffd84f", miss: "#ff7b93" };
+  const y = (d) => 45 - Math.max(-180, Math.min(180, d)) / 4;
+  let html = `<rect width="300" height="90" fill="#0b0820"/>`;
+  for (const [d, c] of [[45, "#6ef3ff22"], [90, "#3ef08a18"], [135, "#ffd84f14"]]) html += `<rect x="0" y="${y(d)}" width="300" height="${(d * 2) / 4}" fill="${c}"/>`;
+  html += `<line x1="0" y1="45" x2="300" y2="45" stroke="#ffffff55" stroke-width=".6"/>`;
+  for (const p of tiempos) {
+    const x = Math.max(1, Math.min(299, (p.t / dur) * 300));
+    if (p.j === "miss") html += `<rect x="${x - 0.6}" y="0" width="1.2" height="90" fill="#ff7b9366"/>`;
+    else html += `<circle cx="${x.toFixed(1)}" cy="${y(p.d ?? 0).toFixed(1)}" r="1.6" fill="${col[p.j]}"/>`;
+  }
+  $("#res-grafica").innerHTML = html;
+}
+
+// Transición entre pantallas.
+function mostrarPantalla(sel) {
+  for (const s of ["#menu", "#juego"]) $(s).classList.toggle("oculto", s !== sel);
+  const el = $(sel);
+  el.classList.remove("entrar"); void el.offsetWidth; el.classList.add("entrar");
+}
+
+// fps medidos (para las pruebas y para el modo "menos efectos").
+const fps = { cuadros: [], ultimo: 0 };
+function contarCuadro() {
+  const t = performance.now();
+  if (fps.ultimo) fps.cuadros.push(t - fps.ultimo);
+  if (fps.cuadros.length > 600) fps.cuadros.shift();
+  fps.ultimo = t;
+}
+
 function volverAlMenu() {
   if (partida && !partida.terminada) terminar(false);
   partida = null;
   $("#resultados").open && $("#resultados").close();
-  $("#juego").classList.add("oculto");
-  $("#menu").classList.remove("oculto");
+  document.body.classList.remove("en-juego");
+  mostrarPantalla("#menu");
   $("#btn-jugar").focus();
 }
 
@@ -289,7 +393,7 @@ $("#archivo-audio").addEventListener("change", async (e) => {
 
 // ---------- eventos ----------
 document.querySelectorAll("input[name=jugador]").forEach((r) => r.addEventListener("change", actualizarOpciones));
-["#precision", "#velocidad", "#retraso", "#dificultad", "#sonido"].forEach((s) => $(s).addEventListener("input", actualizarOpciones));
+["#precision", "#velocidad", "#retraso", "#dificultad", "#sonido", "#pad-modo", "#downscroll", "#pad-alto", "#pad-opacidad", "#vibrar", "#ver-zonas", "#menos-efectos"].forEach((s) => $(s).addEventListener("input", actualizarOpciones));
 $("#btn-conectar").addEventListener("click", conectarRelay);
 $("#btn-jugar").addEventListener("click", empezar);
 $("#btn-repetir").addEventListener("click", () => { $("#resultados").close(); empezar(); });
@@ -309,6 +413,21 @@ window.__fnf = {
   // true cuando la partida empezó y el jugador ya escucha teclado/pad.
   listo: () => !!partida?.listo,
   ultimo: null,
+  // Pad táctil: rectángulo de la zona activa y modo de pantalla.
+  zona: () => {
+    const el = partida?.modo.columnas ? $("#zona-tactil") : $("#pad");
+    if (!partida?.modo.tactil || !el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left, y: r.top, w: r.width, h: r.height, modo: partida.modo.columnas ? "columnas" : "botones", downscroll: partida.modo.downscroll, lienzo: $("#lienzo").getBoundingClientRect().toJSON() };
+  },
+  verZonas: (v) => { verZonas = v; },
+  fps: (reiniciar) => {
+    if (reiniciar) { fps.cuadros = []; fps.ultimo = 0; return null; }
+    const c = [...fps.cuadros].sort((a, b) => a - b);
+    if (!c.length) return null;
+    const media = c.reduce((a, b) => a + b, 0) / c.length;
+    return { fps: +(1000 / media).toFixed(1), p95ms: +c[Math.floor(c.length * 0.95)].toFixed(1), cuadros: c.length, lentos: c.filter((x) => x > 25).length };
+  },
   // Solo para pruebas automáticas: próximas notas del jugador.
   proximas: () => partida ? partida.juego.jugables.filter((n) => n.estado === "espera").slice(0, 6).map((n) => ({ t: n.t, lane: n.lane, l: n.l })) : [],
 };

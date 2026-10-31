@@ -8,12 +8,14 @@
 <title>FNF-Agent · juego de ritmo para personas e IAs</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icono.svg" type="image/svg+xml">
+<link rel="preload" href="fuentes/fredoka.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
+<div class="fondo-animado" aria-hidden="true"><i></i><i></i><i></i></div>
 <a class="saltar" href="#principal">Saltar al contenido</a>
 <header class="barra">
-  <h1><span aria-hidden="true">◆</span> FNF-Agent <small>4.0</small></h1>
+  <h1><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span> FNF-Agent <small>4.0</small></h1>
   <div class="barra-acciones">
     <button id="btn-idioma" class="chip" type="button" lang="en">EN <span class="sr">(English)</span></button>
   </div>
@@ -21,7 +23,10 @@
 
 <main id="principal">
 <!-- MENÚ -->
-<section id="menu" aria-labelledby="t-menu">
+<section id="menu" class="pantalla" aria-labelledby="t-menu">
+  <div class="heroe">
+    <p class="heroe-sub" data-i18n="heroe">Ritmo para personas e IAs · funciona sin internet</p>
+  </div>
   <h2 id="t-menu" data-i18n="elige">1. Elige una canción</h2>
   <div id="canciones" class="canciones" role="radiogroup" aria-labelledby="t-menu"></div>
 
@@ -36,10 +41,10 @@
   <h2 id="t-quien" data-i18n="quien">2. ¿Quién juega?</h2>
   <fieldset class="jugadores">
     <legend class="sr" data-i18n="quien">¿Quién juega?</legend>
-    <label class="opcion"><input type="radio" name="jugador" value="humano" checked><span><b data-i18n="j-humano">Tú</b><small data-i18n="j-humano-d">Flechas táctiles o teclado (← ↓ ↑ → o WASD)</small></span></label>
-    <label class="opcion"><input type="radio" name="jugador" value="perfecto"><span><b data-i18n="j-perfecto">Bot perfecto</b><small data-i18n="j-perfecto-d">Nunca falla. Para ver cómo debería sonar.</small></span></label>
-    <label class="opcion"><input type="radio" name="jugador" value="humanizado"><span><b data-i18n="j-humanizado">Bot humano</b><small data-i18n="j-humanizado-d">Se equivoca según la precisión que elijas.</small></span></label>
-    <label class="opcion"><input type="radio" name="jugador" value="remoto"><span><b data-i18n="j-remoto">IA externa</b><small data-i18n="j-remoto-d">Un programa (Python, LLM…) se conecta por WebSocket.</small></span></label>
+    <label class="opcion"><input type="radio" name="jugador" value="humano" checked><span class="icono" aria-hidden="true">✋</span><span><b data-i18n="j-humano">Tú</b><small data-i18n="j-humano-d">Flechas táctiles o teclado (← ↓ ↑ → o WASD)</small></span></label>
+    <label class="opcion"><input type="radio" name="jugador" value="perfecto"><span class="icono" aria-hidden="true">★</span><span><b data-i18n="j-perfecto">Bot perfecto</b><small data-i18n="j-perfecto-d">Nunca falla. Para ver cómo debería sonar.</small></span></label>
+    <label class="opcion"><input type="radio" name="jugador" value="humanizado"><span class="icono" aria-hidden="true">≈</span><span><b data-i18n="j-humanizado">Bot humano</b><small data-i18n="j-humanizado-d">Se equivoca según la precisión que elijas.</small></span></label>
+    <label class="opcion"><input type="radio" name="jugador" value="remoto"><span class="icono" aria-hidden="true">⇄</span><span><b data-i18n="j-remoto">IA externa</b><small data-i18n="j-remoto-d">Un programa (Python, LLM…) se conecta por WebSocket.</small></span></label>
   </fieldset>
   <div id="op-humanizado" class="tarjeta oculto">
     <label for="precision"><span data-i18n="precision">Precisión del bot</span>: <output id="precision-val">85 %</output></label>
@@ -64,14 +69,30 @@
     <label for="retraso"><span data-i18n="retraso">Retraso del audio</span>: <output id="retraso-val">0 ms</output></label>
     <input id="retraso" type="range" min="-200" max="300" step="5" value="0">
     <label class="interruptor"><input id="sonido" type="checkbox" checked> <span data-i18n="sonido">Música</span></label>
+    <label class="interruptor"><input id="menos-efectos" type="checkbox"> <span data-i18n="menos-efectos">Menos efectos (para teléfonos lentos)</span></label>
   </div>
+  <details class="tarjeta ajustes-tactil" id="ajustes-tactil">
+    <summary data-i18n="tactil">Controles táctiles y pantalla</summary>
+    <div class="ajustes">
+      <label for="pad-modo" data-i18n="pad-modo">Tipo de controles táctiles</label>
+      <select id="pad-modo"><option value="columnas" data-i18n="pad-columnas">Columnas sobre las flechas</option><option value="botones" data-i18n="pad-botones">Botones abajo</option></select>
+      <label for="downscroll" data-i18n="downscroll">Dirección de las notas</label>
+      <select id="downscroll"><option value="auto" data-i18n="ds-auto">Automático (hacia abajo en el teléfono)</option><option value="si" data-i18n="ds-si">Hacia abajo (receptores abajo)</option><option value="no" data-i18n="ds-no">Hacia arriba (receptores arriba)</option></select>
+      <label for="pad-alto"><span data-i18n="pad-alto">Alto de la zona táctil</span>: <output id="pad-alto-val">35 %</output></label>
+      <input id="pad-alto" type="range" min="20" max="60" step="5" value="35">
+      <label for="pad-opacidad"><span data-i18n="pad-opacidad">Brillo de las columnas</span>: <output id="pad-opacidad-val">60 %</output></label>
+      <input id="pad-opacidad" type="range" min="0" max="100" step="10" value="60">
+      <label class="interruptor"><input id="vibrar" type="checkbox"> <span data-i18n="vibrar">Vibrar al tocar</span></label>
+      <label class="interruptor"><input id="ver-zonas" type="checkbox"> <span data-i18n="ver-zonas">Ver zonas táctiles (para comprobar)</span></label>
+    </div>
+  </details>
 
   <button id="btn-jugar" class="jugar" type="button" data-i18n="jugar">▶ Jugar</button>
   <p class="pie" data-i18n="pie">Proyecto libre (MIT). Inspirado en Friday Night Funkin'; no incluye música, charts ni dibujos oficiales.</p>
 </section>
 
 <!-- JUEGO -->
-<section id="juego" class="oculto" aria-label="Partida">
+<section id="juego" class="pantalla oculto" aria-label="Partida">
   <div class="hud" aria-live="off">
     <span><small data-i18n="puntos">Puntos</small><b id="hud-puntos">0</b></span>
     <span><small data-i18n="prec">Precisión</small><b id="hud-precision">100 %</b></span>
@@ -81,6 +102,7 @@
   </div>
   <div class="escena">
     <canvas id="lienzo" role="img" aria-label="Pista de notas"></canvas>
+    <div id="zona-tactil" class="zona-tactil oculto" aria-hidden="true"></div>
     <aside id="panel-ia" class="panel-ia oculto" aria-label="Decisiones de la IA">
       <h3 id="panel-ia-titulo">IA</h3>
       <p id="panel-ia-piensa" class="piensa"></p>
@@ -98,7 +120,10 @@
 <!-- RESULTADOS -->
 <dialog id="resultados" aria-labelledby="res-titulo">
   <h2 id="res-titulo">¡Victoria!</h2>
-  <p class="letra" id="res-letra">S</p>
+  <div class="res-cabeza">
+    <p class="letra" id="res-letra">S</p>
+    <svg id="res-donut" class="donut" viewBox="0 0 42 42" role="img" aria-label="Sick, Good, Bad, Miss"></svg>
+  </div>
   <dl class="stats">
     <div><dt data-i18n="puntos">Puntos</dt><dd id="res-puntos">0</dd></div>
     <div><dt data-i18n="prec">Precisión</dt><dd id="res-precision">0</dd></div>
@@ -108,6 +133,10 @@
     <div><dt>Bad</dt><dd id="res-bad">0</dd></div>
     <div><dt>Miss</dt><dd id="res-miss">0</dd></div>
   </dl>
+  <figure class="grafica">
+    <svg id="res-grafica" viewBox="0 0 300 90" preserveAspectRatio="none" role="img" aria-labelledby="res-grafica-t"></svg>
+    <figcaption id="res-grafica-t" data-i18n="grafica">Precisión de cada nota (centro = perfecto, arriba = tarde, abajo = pronto)</figcaption>
+  </figure>
   <p id="res-quien" class="ayuda"></p>
   <div class="fila">
     <button id="btn-repetir" type="button" class="jugar" data-i18n="repetir">↻ Repetir</button>
