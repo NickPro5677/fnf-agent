@@ -150,3 +150,25 @@ test("sin conexión: con el service worker, la app y las canciones cargan offlin
   assert.ok(await page.evaluate(() => window.__fnf.estado().t > 0));
   await ctx.close();
 });
+
+test("el panel de la IA no tapa ningún carril (1920, 1366 y 390 px)", async () => {
+  for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844]]) {
+    const page = await nueva({ width, height });
+    await page.goto(web.url + "?nosw");
+    await preparar(page, { cancion: "primer-paso", jugador: "perfecto" });
+    await page.click("#btn-jugar");
+    await page.waitForSelector("#juego:not(.oculto)");
+    await page.waitForSelector("#panel-ia:not(.oculto)");
+    const { panel, lienzo, g } = await page.evaluate(() => {
+      const r = (el) => { const b = document.querySelector(el).getBoundingClientRect(); return { left: b.left, right: b.right }; };
+      return { panel: r("#panel-ia"), lienzo: r("#lienzo"), g: window.__fnf.geometria() };
+    });
+    const carriles = [...g.jugador.map((x) => [x, g.ancho]), ...(g.rival || []).map((x) => [x, g.anchoR])];
+    for (const [x, a] of carriles) {
+      const izq = lienzo.left + x - a * 0.45, der = lienzo.left + x + a * 0.45;
+      assert.ok(der <= panel.left || izq >= panel.right, `${width}px: carril en ${Math.round(izq)}–${Math.round(der)} choca con el panel ${Math.round(panel.left)}–${Math.round(panel.right)}`);
+      assert.ok(izq >= 0 && der <= lienzo.right, `${width}px: carril fuera de pantalla`);
+    }
+    await page.close();
+  }
+});

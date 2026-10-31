@@ -58,7 +58,7 @@ input[type=range] { width: 100%; accent-color: var(--acento); min-height: 32px; 
 .hud b { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
 .escena { position: relative; flex: 1; min-height: 0; }
 #lienzo { width: 100%; height: 100%; display: block; touch-action: none; }
-.panel-ia { position: absolute; left: .5rem; bottom: 2.6rem; width: min(330px, calc(100% - 1rem)); background: #0d0a1fd9; border: 1px solid var(--borde); border-radius: 12px; padding: .5rem .7rem; font-size: .82rem; backdrop-filter: blur(6px); pointer-events: none; }
+.panel-ia { position: absolute; left: .5rem; bottom: 2.6rem; width: min(320px, 26vw); background: #0d0a1fd9; border: 1px solid var(--borde); border-radius: 12px; padding: .5rem .7rem; font-size: .82rem; backdrop-filter: blur(6px); pointer-events: none; }
 .panel-ia h3 { margin: 0 0 .2rem; font-size: .85rem; color: var(--ok); }
 .panel-ia .piensa { margin: 0 0 .3rem; color: #ffe08a; min-height: 1em; }
 .panel-ia ol { margin: 0; padding: 0; list-style: none; display: grid; gap: .15rem; }

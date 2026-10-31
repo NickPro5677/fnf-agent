@@ -123,6 +123,13 @@ async function crearJugador() {
   return new JugadorHumano({ botones: [...document.querySelectorAll("#pad .tecla")] });
 }
 
+// Ancho (px) que ocupa el panel de la IA a la izquierda, para que no tape ningún carril.
+function reservaPanel() {
+  const p = $("#panel-ia");
+  if (p.classList.contains("oculto")) return 0;
+  return p.offsetLeft + p.offsetWidth + 12;
+}
+
 function panelIA(jugador) {
   const ver = jugador.tipo !== "humano";
   $("#panel-ia").classList.toggle("oculto", !ver);
@@ -217,7 +224,7 @@ function bucle() {
     juego.actualizar(t).forEach(partida.manejar);
     if (!juego.resultado) jugador.cuadro(t);
   }
-  lienzo.dibujar(juego, t, { velocidad: partida.velocidad, bpm: partida.chart.bpm, color: partida.info.color || "#7c5cff", mostrarIA: jugador.tipo !== "humano" });
+  lienzo.dibujar(juego, t, { velocidad: partida.velocidad, bpm: partida.chart.bpm, color: partida.info.color || "#7c5cff", mostrarIA: jugador.tipo !== "humano", reserva: reservaPanel() });
   const r = juego.resumen();
   pon("#hud-puntos", r.puntos.toLocaleString(idioma()));
   pon("#hud-precision", `${(r.precision * 100).toFixed(1)} %`);
@@ -292,6 +299,7 @@ addEventListener("keydown", (e) => { if (e.key === "Escape" && partida && !parti
 $("#btn-idioma").addEventListener("click", () => { cambiarIdioma(); pintarCanciones(); });
 
 window.__fnf = {
+  geometria: () => lienzo.geometria(reservaPanel()),
   estado: () => partida ? { t: partida.juego.t, ...partida.juego.resumen(), jugador: partida.jugador.nombre } : null,
   ultimo: null,
   // Solo para pruebas automáticas: próximas notas del jugador.

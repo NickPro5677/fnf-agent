@@ -40,28 +40,37 @@ export class Lienzo {
     this.W = w; this.H = h; this.dpr = dpr;
   }
 
-  geometria() {
+  // `reserva`: px a la izquierda ocupados por el panel de la IA (0 si no se ve).
+  geometria(reserva = 0) {
     const { W } = this;
     const dos = W >= 640;
-    // En pantallas anchas: rival a la izquierda y jugador a la derecha, del mismo tamaño.
+    if (!dos && reserva > 0) {
+      // Móvil con panel de IA: el panel ocupa la columna del rival; solo se dibuja el jugador.
+      const ancho = Math.min(120, (W * 0.6 * 0.92) / 4);
+      const cx = W * 0.69;
+      return { dos, ancho, anchoR: 0, recY: Math.max(60, ancho * 0.85), jugador: [0, 1, 2, 3].map((i) => cx + (i - 1.5) * ancho), rival: null, centro: cx };
+    }
+    // En pantallas anchas: rival a la izquierda y jugador a la derecha (después del panel, si lo hay).
     // En el móvil: rival pequeño a la izquierda (40 %) y jugador grande a la derecha (60 %).
-    const zonaJ = dos ? W / 2 : W * 0.6;
+    const x0 = dos ? Math.min(reserva, W * 0.4) : 0;
+    const Wu = W - x0;
+    const zonaJ = dos ? Wu / 2 : W * 0.6;
     const ancho = Math.min(120, (zonaJ * 0.92) / 4);
     const anchoR = dos ? ancho * 0.8 : Math.min(ancho * 0.7, (W * 0.38 * 0.92) / 4);
-    const jugadorX = dos ? W * 0.73 : W * 0.69;
-    const rivalX = dos ? W * 0.27 : W * 0.2;
+    const jugadorX = dos ? x0 + Wu * 0.73 : W * 0.69;
+    const rivalX = dos ? x0 + Wu * 0.27 : W * 0.2;
     const lanesX = (cx, a) => [0, 1, 2, 3].map((i) => cx + (i - 1.5) * a);
-    return { dos, ancho, anchoR, recY: Math.max(60, ancho * 0.85), jugador: lanesX(jugadorX, ancho), rival: lanesX(rivalX, anchoR) };
+    return { dos, ancho, anchoR, recY: Math.max(60, ancho * 0.85), jugador: lanesX(jugadorX, ancho), rival: lanesX(rivalX, anchoR), centro: x0 + Wu / 2 };
   }
 
   efecto(e) { this.efectos.push({ ...e, desde: performance.now() }); }
   rayo(lane, texto, color) { this.rayos.push({ lane, texto, color, desde: performance.now() }); }
 
-  dibujar(juego, t, { velocidad = 1, bpm = 120, color = "#7c5cff", mostrarIA = false } = {}) {
+  dibujar(juego, t, { velocidad = 1, bpm = 120, color = "#7c5cff", mostrarIA = false, reserva = 0 } = {}) {
     this.ajustar();
     const { c, W, H, dpr } = this;
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const g = this.geometria();
+    const g = this.geometria(reserva);
     const px = 0.45 * velocidad * Math.min(1.4, Math.max(0.75, H / 800));
     const ahora = performance.now();
 
@@ -99,7 +108,7 @@ export class Lienzo {
     }
 
     // receptores
-    const pintarReceptores = (xs, tam, teclas) => xs.forEach((x, lane) => {
+    const pintarReceptores = (xs, tam, teclas) => xs && xs.forEach((x, lane) => {
       const on = teclas?.[lane];
       flecha(c, x, g.recY, tam * (on ? 0.86 : 0.8), lane, on ? COLORES[lane] + "aa" : "#ffffff14", on ? "#fff" : "#9a93c8", 3);
     });
@@ -149,7 +158,7 @@ export class Lienzo {
         c.globalAlpha = 1;
       } else if (e.tipo === "popup") {
         c.globalAlpha = Math.min(1, (1 - p) * 2);
-        const cx = g.dos ? W * 0.5 : W / 2;
+        const cx = g.centro;
         const y = H * 0.45 - p * 30;
         c.textAlign = "center";
         c.font = `800 ${Math.round(Math.min(46, W / 9) * (1 + (p < 0.1 ? (0.1 - p) * 3 : 0)))}px system-ui, sans-serif`;
