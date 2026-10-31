@@ -86,7 +86,7 @@ body.en-juego .fondo-animado { display: none; }
 .opcion small { display: block; color: var(--suave); }
 .fila { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
 .fila input[type=url] { flex: 1 1 200px; min-width: 0; }
-input[type=url], select { background: #0b0820; color: var(--texto); border: 1px solid var(--borde); border-radius: var(--radio-s); padding: .55rem .7rem; min-height: 44px; max-width: 100%; }
+input[type=url], input[type=text], input[type=password], select { background: #0b0820; color: var(--texto); border: 1px solid var(--borde); border-radius: var(--radio-s); padding: .55rem .7rem; min-height: 44px; max-width: 100%; }
 input[type=range] { width: 100%; accent-color: var(--acento); min-height: 32px; }
 .ajustes { display: grid; gap: .35rem; }
 .interruptor { display: flex; align-items: center; gap: .55rem; min-height: 44px; }
