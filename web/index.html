@@ -43,12 +43,40 @@
     <legend class="sr" data-i18n="quien">¿Quién juega?</legend>
     <label class="opcion"><input type="radio" name="jugador" value="humano" checked><span class="icono" aria-hidden="true">✋</span><span><b data-i18n="j-humano">Tú</b><small data-i18n="j-humano-d">Flechas táctiles o teclado (← ↓ ↑ → o WASD)</small></span></label>
     <label class="opcion"><input type="radio" name="jugador" value="perfecto"><span class="icono" aria-hidden="true">★</span><span><b data-i18n="j-perfecto">Bot perfecto</b><small data-i18n="j-perfecto-d">Nunca falla. Para ver cómo debería sonar.</small></span></label>
-    <label class="opcion"><input type="radio" name="jugador" value="humanizado"><span class="icono" aria-hidden="true">≈</span><span><b data-i18n="j-humanizado">Bot humano</b><small data-i18n="j-humanizado-d">Se equivoca según la precisión que elijas.</small></span></label>
+    <label class="opcion"><input type="radio" name="jugador" value="humanizado"><span class="icono" aria-hidden="true">≈</span><span><b data-i18n="j-humanizado">Bot con perfil</b><small data-i18n="j-humanizado-d">Pro, novato, nervioso, cansado… falla como una persona.</small></span></label>
     <label class="opcion"><input type="radio" name="jugador" value="remoto"><span class="icono" aria-hidden="true">⇄</span><span><b data-i18n="j-remoto">IA externa</b><small data-i18n="j-remoto-d">Un programa (Python, LLM…) se conecta por WebSocket.</small></span></label>
   </fieldset>
   <div id="op-humanizado" class="tarjeta oculto">
-    <label for="precision"><span data-i18n="precision">Precisión del bot</span>: <output id="precision-val">85 %</output></label>
-    <input id="precision" type="range" min="50" max="99" value="85">
+    <div class="fila">
+      <label for="perfil" data-i18n="perfil">Perfil</label>
+      <select id="perfil">
+        <option value="perfecto" data-i18n="p-perfecto">Perfecto</option>
+        <option value="pro" data-i18n="p-pro">Pro</option>
+        <option value="bueno" selected data-i18n="p-bueno">Bueno</option>
+        <option value="novato" data-i18n="p-novato">Novato</option>
+        <option value="nervioso" data-i18n="p-nervioso">Nervioso</option>
+        <option value="cansado" data-i18n="p-cansado">Cansado</option>
+        <option value="personalizado" data-i18n="p-personalizado">Personalizado</option>
+      </select>
+    </div>
+    <p id="perfil-desc" class="ayuda"></p>
+    <div class="fila">
+      <label for="semilla" data-i18n="semilla">Semilla</label>
+      <input id="semilla" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="9" placeholder="—" autocomplete="off" aria-describedby="semilla-ayuda">
+    </div>
+    <p id="semilla-ayuda" class="ayuda" data-i18n="semilla-ayuda">Vacía = distinta cada vez. Con un número, el bot repite la misma partida.</p>
+    <div id="op-personalizado" class="oculto">
+      <label for="pz-sigma"><span data-i18n="pz-sigma">Dispersión</span>: <output id="pz-sigma-val">24 ms</output></label>
+      <input id="pz-sigma" type="range" min="0" max="80" value="24">
+      <label for="pz-sesgo"><span data-i18n="pz-sesgo">Tendencia (− pronto, + tarde)</span>: <output id="pz-sesgo-val">5 ms</output></label>
+      <input id="pz-sesgo" type="range" min="-40" max="40" value="5">
+      <label for="pz-cansancio"><span data-i18n="pz-cansancio">Cansancio</span>: <output id="pz-cansancio-val">0.2</output></label>
+      <input id="pz-cansancio" type="range" min="0" max="30" value="2">
+      <label for="pz-presion"><span data-i18n="pz-presion">Nervios con combo alto</span>: <output id="pz-presion-val">0.2</output></label>
+      <input id="pz-presion" type="range" min="0" max="20" value="2">
+      <label for="pz-salto"><span data-i18n="pz-salto">Notas que se salta</span>: <output id="pz-salto-val">0.5 %</output></label>
+      <input id="pz-salto" type="range" min="0" max="100" value="5">
+    </div>
   </div>
   <div id="op-remoto" class="tarjeta oculto">
     <label for="url-relay" data-i18n="url-relay">Dirección del relay</label>
@@ -137,6 +165,17 @@
     <svg id="res-grafica" viewBox="0 0 300 90" preserveAspectRatio="none" role="img" aria-labelledby="res-grafica-t"></svg>
     <figcaption id="res-grafica-t" data-i18n="grafica">Precisión de cada nota (centro = perfecto, arriba = tarde, abajo = pronto)</figcaption>
   </figure>
+  <figure class="grafica">
+    <svg id="res-histo" viewBox="0 0 300 90" preserveAspectRatio="none" role="img" aria-labelledby="res-histo-t"></svg>
+    <figcaption id="res-histo-t"><span data-i18n="histo">Reparto del desfase (izquierda = pronto, derecha = tarde)</span> <span id="res-histo-stats"></span></figcaption>
+  </figure>
+  <section id="res-vs" class="vs oculto" aria-labelledby="res-vs-t">
+    <h3 id="res-vs-t" data-i18n="vs">Tú vs Bot</h3>
+    <table>
+      <thead><tr><th scope="col"></th><th scope="col" id="vs-a"></th><th scope="col" id="vs-b"></th></tr></thead>
+      <tbody id="vs-filas"></tbody>
+    </table>
+  </section>
   <p id="res-quien" class="ayuda"></p>
   <div class="fila">
     <button id="btn-repetir" type="button" class="jugar" data-i18n="repetir">↻ Repetir</button>

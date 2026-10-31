@@ -255,6 +255,18 @@ export class Lienzo {
       c.globalAlpha = 1;
     }
 
+    // marcas: dónde planea pulsar el bot (puede ir antes o después de la nota)
+    if (opts.marcas && g.jugador) {
+      c.lineWidth = 3; c.lineCap = "round";
+      for (const m of opts.marcas) {
+        const y = g.recY + (m.t - t) * px * dir;
+        if (dir > 0 ? y > H : y < 0) continue;
+        const x = g.jugador[m.lane], w = g.ancho * 0.42;
+        c.strokeStyle = "#ffffffd9"; c.beginPath(); c.moveTo(x - w, y); c.lineTo(x + w, y); c.stroke();
+        c.fillStyle = COLORES[m.lane]; c.beginPath(); c.arc(x - w, y, 3.5, 0, Math.PI * 2); c.arc(x + w, y, 3.5, 0, Math.PI * 2); c.fill();
+      }
+    }
+
     // partículas
     if (this.particulas.length) {
       this.particulas = this.particulas.filter((p) => ahora - p.desde < p.vida);
@@ -325,5 +337,26 @@ export class Lienzo {
     const ix = bx + bw * (1 - juego.vida);
     c.fillStyle = "#fff"; c.beginPath(); c.arc(ix, by + 6, 11, 0, Math.PI * 2); c.fill();
     c.fillStyle = "#0b0820"; c.font = "700 12px system-ui"; c.textAlign = "center"; c.fillText("♥", ix, by + 10);
+    if (opts.errores) this._errores(opts.errores, bx, bw, g.downscroll ? by + 26 : by - 62);
+  }
+
+  /** Gráfica en vivo del desfase de los últimos toques (centro = perfecto, arriba = tarde). */
+  _errores(errores, bx, bw, y0) {
+    const { c } = this;
+    const w = Math.min(220, bw * 0.6), h = 48, x0 = bx + (bw - w) / 2, mid = y0 + h / 2;
+    c.fillStyle = "#0b0820cc"; c.fillRect(x0, y0, w, h);
+    c.fillStyle = "#6ef3ff22"; c.fillRect(x0, mid - (45 / 180) * (h / 2), w, (90 / 180) * (h / 2));
+    c.fillStyle = "#ffffff55"; c.fillRect(x0, mid, w, 1);
+    const ult = errores.slice(-40), paso = w / 40;
+    const col = { sick: "#6ef3ff", good: "#3ef08a", bad: "#ffd84f", miss: "#ff7b93" };
+    ult.forEach((e, i) => {
+      const x = x0 + paso * (i + 0.5);
+      c.fillStyle = col[e.j] || "#fff";
+      if (e.d == null) { c.globalAlpha = 0.5; c.fillRect(x - 1, y0, 2, h); c.globalAlpha = 1; return; }
+      const y = mid - (Math.max(-180, Math.min(180, e.d)) / 180) * (h / 2);
+      c.fillRect(x - 2, y - 2, 4, 4);
+    });
+    c.fillStyle = "#fff"; c.font = `600 10px ${FUENTE}`; c.textAlign = "left";
+    c.fillText(this.etiquetaErrores || "ms", x0 + 4, y0 + 11);
   }
 }

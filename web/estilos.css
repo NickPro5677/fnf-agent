@@ -181,3 +181,14 @@ body.menos-efectos *, body.menos-efectos *::before, body.menos-efectos *::after 
 }
 
 .aviso { color: #ffe08a; border-left: 3px solid var(--oro); padding-left: .5rem; }
+
+/* Tú vs Bot */
+.vs { margin: .2rem 0 .6rem; }
+.vs h3 { font-family: var(--display); font-size: 1rem; margin: 0 0 .3rem; }
+.vs table { width: 100%; border-collapse: collapse; font-size: .85rem; table-layout: fixed; }
+.vs th, .vs td { padding: .25rem .35rem; text-align: right; border-bottom: 1px solid #ffffff14; overflow-wrap: anywhere; }
+.vs th[scope=row], .vs td[colspan] { text-align: left; color: var(--suave); font-weight: 600; }
+.vs thead th { color: var(--suave); font-size: .75rem; }
+.vs td.gana { color: #3ef08a; font-weight: 700; }
+#op-personalizado { margin-top: .4rem; }
+#semilla { width: 8rem; }
