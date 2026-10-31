@@ -8,6 +8,7 @@ const EN = {
   "j-remoto": "External AI", "j-remoto-d": "A program (Python, LLM…) connects over WebSocket.",
   precision: "Bot accuracy", "url-relay": "Relay address", conectar: "Connect",
   "relay-ayuda": "In Termux: <code>python agente/relay.py</code> then <code>python agente/agente_chart.py</code>.",
+  "aviso-https": "You are on the web demo (https). The browser won't let this page connect to <code>ws://127.0.0.1</code>. To play with an AI, run the game locally: <code>python -m http.server 8000 -d web</code> and open <code>http://127.0.0.1:8000</code>.",
   ajustes: "3. Settings", dificultad: "Difficulty", velocidad: "Note speed", retraso: "Audio delay", sonido: "Music",
   jugar: "▶ Play", pie: "Free project (MIT). Inspired by Friday Night Funkin'; includes no official music, charts or art.",
   puntos: "Score", prec: "Accuracy", fallos: "Misses", salir: "✕ Exit", "combo-max": "Max combo", repetir: "↻ Retry", menu: "Menu",

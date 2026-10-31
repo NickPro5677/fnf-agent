@@ -31,7 +31,7 @@ export class JugadorHumano {
     addEventListener("keyup", arriba);
     this.limpiar.push(() => { removeEventListener("keydown", abajo); removeEventListener("keyup", arriba); });
     this.botones.forEach((b, lane) => {
-      const on = (e) => { e.preventDefault(); b.setPointerCapture?.(e.pointerId); b.classList.add("activo"); ctx.presionar(lane, "toque"); };
+      const on = (e) => { e.preventDefault(); try { b.setPointerCapture?.(e.pointerId); } catch { /* puntero sintético o ya liberado */ } b.classList.add("activo"); ctx.presionar(lane, "toque"); };
       const off = (e) => { e.preventDefault(); if (!b.classList.contains("activo")) return; b.classList.remove("activo"); ctx.soltar(lane); };
       b.addEventListener("pointerdown", on);
       b.addEventListener("pointerup", off);

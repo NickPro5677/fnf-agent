@@ -6,6 +6,8 @@ Works on phones (touch arrows) and desktop (keyboard). Nothing to install to pla
 > Original idea by **@NickPro5677**: an environment where AI agents learn and compete by hitting arrows on beat.
 > Version 4 rebuilds everything in the browser; the idea is the same. The old Python engine lives in [`legacy/`](legacy/).
 
+**▶ Play now: https://nickpro5677.github.io/fnf-agent/** (works on phones, and offline after the first visit)
+
 [Versión en español](README.md)
 
 ![Bot playing with the AI overlay](docs/img/bot-panel-ia.png)
@@ -38,7 +40,8 @@ python agente/relay.py          # WebSocket relay at ws://127.0.0.1:8765
 python agente/agente_chart.py   # an AI that reads the chart and hits on time
 ```
 
-Choose **External AI** in the menu and press Play. Other examples: `agente_observe.py` (reacts to what's near),
+Open the **locally served** game (`http://127.0.0.1:8000`), choose **External AI** and press Play.
+The https web demo **cannot** connect to an AI: browsers block an https page from talking to `ws://127.0.0.1`. Other examples: `agente_observe.py` (reacts to what's near),
 `ejemplo_llm.py` (LLM template, `FNF_LLM_URL` / `FNF_LLM_KEY`). See [docs/protocolo.md](docs/protocolo.md)
 and [docs/crear-tu-agente.md](docs/crear-tu-agente.md) (Spanish, with JSON examples).
 

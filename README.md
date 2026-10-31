@@ -10,6 +10,8 @@ Funciona en el teléfono (flechas táctiles) y en la PC (teclado). No necesita i
 
 ![Bot con el panel de IA en la PC](docs/img/bot-panel-ia.png)
 
+**▶ Juega ahora: https://nickpro5677.github.io/fnf-agent/** (funciona en el teléfono y sin internet después de abrirla una vez)
+
 [English version](README.en.md)
 
 ## Qué trae
@@ -43,7 +45,12 @@ python agente/relay.py           # sesión 2: el "puente" en ws://127.0.0.1:8765
 python agente/agente_chart.py    # sesión 3: una IA que lee el chart y toca a tiempo
 ```
 
-En el juego elige **IA externa** y toca **Jugar**. Verás sus decisiones en el panel.
+Abre el juego **en local** (`http://127.0.0.1:8000`, ver arriba), elige **IA externa** y toca **Jugar**.
+
+> La demo web (https) **no puede** conectarse a una IA: el navegador bloquea que una página https hable con `ws://127.0.0.1`.
+> Para la IA, usa siempre el juego servido en tu teléfono o PC.
+
+Verás sus decisiones en el panel.
 
 Otras IAs de ejemplo:
 
