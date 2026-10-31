@@ -1,16 +1,28 @@
 {
   "name": "fnf-agent",
-  "version": "3.0.0",
-  "description": "Plataforma local de agentes para Friday Night Funkin' en Termux: motor fiel + agentes enchufables + visor.",
-  "main": "index.js",
+  "version": "4.0.0",
+  "description": "Juego de ritmo estilo FNF en el navegador para personas e IAs: bot integrado, IA externa por WebSocket, offline y en el móvil.",
+  "main": "web/app.js",
   "scripts": {
-    "test": "bash check.sh --quick"
+    "test": "bash check.sh --quick",
+    "test:js": "node --test tests/js/*.test.mjs",
+    "test:py": "python3 -m pytest -q tests/py",
+    "test:e2e": "node --test tests/e2e/*.test.mjs",
+    "canciones": "node tools/generar_canciones.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0",
+    "axe-core": "^4.10.0"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
