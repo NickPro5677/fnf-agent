@@ -57,6 +57,7 @@ def main():
     ap.add_argument("--relay", default=URL_POR_DEFECTO)
     ap.add_argument("--una", action="store_true")
     a = ap.parse_args()
+    sys.stdout.reconfigure(line_buffering=True)
     try:
         ws = conectar("observe (Python)", a.relay)
     except OSError as e:

@@ -39,7 +39,8 @@ export function cambiarIdioma(nuevo) {
     el.innerHTML = actual === "en" && EN[k] ? EN[k] : originales.get(el);
   });
   const b = document.querySelector("#btn-idioma");
-  if (b) { b.textContent = actual === "es" ? "EN" : "ES"; b.setAttribute("aria-label", actual === "es" ? "Change language to English" : "Cambiar idioma a español"); }
+  if (b) b.lang = actual === "es" ? "en" : "es";
+  if (b) b.innerHTML = actual === "es" ? 'EN <span class="sr">(English)</span>' : 'ES <span class="sr">(español)</span>';
   const dif = document.querySelector("#dificultad");
   if (dif) [...dif.options].forEach((o, i) => { o.textContent = (actual === "en" ? ["Easy", "Normal", "Hard"] : ["Fácil", "Normal", "Difícil"])[i]; });
 }

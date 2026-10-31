@@ -294,6 +294,8 @@ $("#btn-idioma").addEventListener("click", () => { cambiarIdioma(); pintarCancio
 window.__fnf = {
   estado: () => partida ? { t: partida.juego.t, ...partida.juego.resumen(), jugador: partida.jugador.nombre } : null,
   ultimo: null,
+  // Solo para pruebas automáticas: próximas notas del jugador.
+  proximas: () => partida ? partida.juego.jugables.filter((n) => n.estado === "espera").slice(0, 6).map((n) => ({ t: n.t, lane: n.lane, l: n.l })) : [],
 };
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http") && !new URLSearchParams(location.search).has("nosw")) {
