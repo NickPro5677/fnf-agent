@@ -5,6 +5,7 @@
   "main": "web/app.js",
   "scripts": {
     "test": "bash check.sh --quick",
+    "test:all": "bash check.sh",
     "test:js": "node --test tests/js/*.test.mjs",
     "test:py": "python3 -m pytest -q tests/py",
     "test:e2e": "node --test tests/e2e/*.test.mjs",
