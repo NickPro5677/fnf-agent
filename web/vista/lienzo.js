@@ -132,6 +132,35 @@ export class Lienzo {
     this.c.drawImage(s.cv, x - s.lado / 2, y - s.lado / 2, s.lado, s.lado);
   }
 
+  _fondo(g, color) {
+    const { W, H, dpr } = this;
+    const k = `${W}|${H}|${dpr}|${color}|${g.jugador.join()}|${g.rival ? g.rival.join() : ""}`;
+    if (this.fondoCache?.k === k) return this.fondoCache;
+    const lienzo = () => { const cv = document.createElement("canvas"); cv.width = W * dpr; cv.height = H * dpr; const c = cv.getContext("2d"); c.scale(dpr, dpr); return [cv, c]; };
+    const radial = (c) => {
+      const rad = c.createRadialGradient(W / 2, H * 0.5, 10, W / 2, H * 0.5, Math.max(W, H) * 0.7);
+      rad.addColorStop(0, color); rad.addColorStop(1, "transparent");
+      c.fillStyle = rad; c.fillRect(0, 0, W, H);
+    };
+    const [base, c] = lienzo();
+    const lin = c.createLinearGradient(0, 0, 0, H);
+    lin.addColorStop(0, "#160f30"); lin.addColorStop(1, "#05040c");
+    c.fillStyle = lin; c.fillRect(0, 0, W, H);
+    c.globalAlpha = 0.2; radial(c); c.globalAlpha = 1;
+    if (g.rival) {
+      const r0 = g.rival[0] - g.anchoR / 2, r1 = g.rival[3] + g.anchoR / 2;
+      c.fillStyle = "#0b082066"; c.fillRect(r0, 0, r1 - r0, H);
+    }
+    const ancho = g.ancho, x0 = g.jugador[0] - ancho / 2, x1 = g.jugador[3] + ancho / 2;
+    c.fillStyle = "#0b082099"; c.fillRect(x0, 0, x1 - x0, H);
+    for (let lane = 0; lane < 4; lane++) { c.fillStyle = COLORES[lane] + "12"; c.fillRect(g.jugador[lane] - ancho * 0.46, 0, ancho * 0.92, H); }
+    c.fillStyle = "#ffffff10"; c.fillRect(x0, 0, 1, H); c.fillRect(x1 - 1, 0, 1, H);
+    const [luz, cl] = lienzo();
+    radial(cl);
+    this.fondoCache = { k, base, luz };
+    return this.fondoCache;
+  }
+
   dibujar(juego, t, opts = {}) {
     const { velocidad = 1, bpm = 120, color = "#7c5cff", mostrarIA = false, reserva = 0, zona = 0, verZonas = false, menosEfectos = false, pulsadas = null, opacidad = 0.6 } = opts;
     this.opts = opts;
@@ -143,37 +172,12 @@ export class Lienzo {
     const px = 0.45 * velocidad * Math.min(1.4, Math.max(0.75, H / 800));
     const ahora = performance.now();
 
-    // fondo con pulso al ritmo
+    // fondo + pistas de carril: pre-renderizados una vez por tamaño (rápido en teléfonos baratos)
     const beat = 60000 / bpm;
     const pulso = t > 0 && !menosEfectos ? Math.max(0, 1 - ((t % beat) / beat) * 3) : 0;
-    const fondo = c.createLinearGradient(0, 0, 0, H);
-    fondo.addColorStop(0, "#160f30");
-    fondo.addColorStop(1, "#05040c");
-    c.fillStyle = fondo;
-    c.fillRect(0, 0, W, H);
-    c.globalAlpha = 0.2 + pulso * 0.22;
-    const rad = c.createRadialGradient(W / 2, H * 0.5, 10, W / 2, H * 0.5, Math.max(W, H) * 0.7);
-    rad.addColorStop(0, color);
-    rad.addColorStop(1, "transparent");
-    c.fillStyle = rad;
-    c.fillRect(0, 0, W, H);
-    c.globalAlpha = 1;
-
-    // pistas de los carriles del jugador
-    if (g.rival) {
-      const r0 = g.rival[0] - g.anchoR / 2, r1 = g.rival[3] + g.anchoR / 2;
-      c.fillStyle = "#0b082066"; c.fillRect(r0, 0, r1 - r0, H);
-    }
-    const ancho = g.ancho;
-    c.fillStyle = "#0b082099";
-    const x0 = g.jugador[0] - ancho / 2, x1 = g.jugador[3] + ancho / 2;
-    c.fillRect(x0, 0, x1 - x0, H);
-    for (let lane = 0; lane < 4; lane++) {
-      c.fillStyle = COLORES[lane] + "12";
-      c.fillRect(g.jugador[lane] - ancho * 0.46, 0, ancho * 0.92, H);
-    }
-    c.fillStyle = "#ffffff10";
-    c.fillRect(x0, 0, 1, H); c.fillRect(x1 - 1, 0, 1, H);
+    const fondo = this._fondo(g, color);
+    c.drawImage(fondo.base, 0, 0, W, H);
+    if (pulso > 0.02) { c.globalAlpha = pulso * 0.22; c.drawImage(fondo.luz, 0, 0, W, H); c.globalAlpha = 1; }
 
     // zona táctil: columnas alineadas con los carriles, hasta los bordes
     if (zona > 0) {
