@@ -11,6 +11,12 @@ const EN = {
   "aviso-https": "You are on the web demo (https). The browser won't let this page connect to <code>ws://127.0.0.1</code>. To play with an AI, run the game locally: <code>python -m http.server 8000 -d web</code> and open <code>http://127.0.0.1:8000</code>.",
   ajustes: "3. Settings", dificultad: "Difficulty", velocidad: "Note speed", retraso: "Audio delay", sonido: "Music",
   jugar: "▶ Play", pie: "Free project (MIT). Inspired by Friday Night Funkin'; includes no official music, charts or art.",
+  heroe: "Rhythm for people and AIs · works offline",
+  "menos-efectos": "Fewer effects (for slow phones)", tactil: "Touch controls and screen",
+  "pad-modo": "Touch control type", "pad-columnas": "Columns over the arrows", "pad-botones": "Buttons at the bottom",
+  downscroll: "Note direction", "ds-auto": "Automatic (downwards on phones)", "ds-si": "Downwards (receptors at the bottom)", "ds-no": "Upwards (receptors at the top)",
+  "pad-alto": "Touch zone height", "pad-opacidad": "Column glow", vibrar: "Vibrate on touch", "ver-zonas": "Show touch zones (to check)",
+  grafica: "Timing of each note (centre = perfect, up = late, down = early)",
   puntos: "Score", prec: "Accuracy", fallos: "Misses", salir: "✕ Exit", "combo-max": "Max combo", repetir: "↻ Retry", menu: "Menu",
 };
 const ES_EXTRA = {
