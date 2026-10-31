@@ -15,7 +15,8 @@ Works on phones (touch arrows) and desktop (keyboard). Nothing to install to pla
 ## Features
 
 - **3 original songs** (CC0), each in easy, normal and hard.
-- **Players:** you, a perfect bot, a "humanized" bot that makes mistakes, or **your own AI** over WebSocket.
+- **Players:** you, a **bot with 7 profiles** (Perfect, Pro, Good, Rookie, Nervous, Tired or Custom, seeded), or **your own AI** over WebSocket.
+- **You vs Bot:** timing-error histogram and a comparison with the bot; your best runs are saved.
 - Live overlay showing **what the AI decided and why**.
 - Score, accuracy, combo, health bar, ratings and a results screen.
 - Load **your own chart** (vanilla FNF, Psych Engine or v2 JSON) and **your own audio**.
@@ -36,13 +37,16 @@ Open **http://127.0.0.1:8000**.
 ## Connect an AI
 
 ```sh
-python agente/relay.py          # WebSocket relay at ws://127.0.0.1:8765
-python agente/agente_chart.py   # an AI that reads the chart and hits on time
+python agente/relay.py               # WebSocket relay at ws://127.0.0.1:8765, prints a 🔑 token
+python agente/agente_autoajuste.py   # measures latency and hits on time (protocol v2)
 ```
 
-Open the **locally served** game (`http://127.0.0.1:8000`), choose **External AI** and press Play.
+Open the **locally served** game (`http://127.0.0.1:8000`), choose **External AI**, type the relay token in
+**External AI settings**, press **Test connection**, then Play. The token is required and the relay only accepts the game
+served from `127.0.0.1`/`localhost`. Settings also cover protocol (v2/v1), lookahead, Hz, latency compensation and saved
+connection profiles (exported without the token). JavaScript agent: `node agente/agente.mjs` (Node 22, no dependencies).
 The https web demo **cannot** connect to an AI: browsers block an https page from talking to `ws://127.0.0.1`. Other examples: `agente_observe.py` (reacts to what's near),
-`ejemplo_llm.py` (LLM template, `FNF_LLM_URL` / `FNF_LLM_KEY`). See [docs/protocolo.md](docs/protocolo.md)
+`ejemplo_llm.py` (LLM template, `FNF_LLM_URL` / `FNF_LLM_KEY`). See [docs/protocolo-v2.md](docs/protocolo-v2.md) (v1: [docs/protocolo.md](docs/protocolo.md))
 and [docs/crear-tu-agente.md](docs/crear-tu-agente.md) (Spanish, with JSON examples).
 
 ## Rules

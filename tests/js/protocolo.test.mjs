@@ -31,7 +31,8 @@ test("mensaje state: dt por carril y próximas notas", () => {
 });
 
 test("leerMensajeAgente valida", () => {
-  assert.deepEqual(leerMensajeAgente('{"type":"key","lane":"up","down":true,"why":"x"}'), { ok: true, type: "key", lane: 2, down: true, why: "x" });
+  assert.deepEqual(leerMensajeAgente('{"type":"key","lane":"up","down":true,"why":"x"}'), { ok: true, type: "key", lane: 2, down: true, at: null, why: "x" });
+  assert.equal(leerMensajeAgente('{"type":"key","lane":0,"down":true,"at":1234.5}').at, 1234.5);
   assert.equal(leerMensajeAgente('{"type":"key","lane":7,"down":true}').error, "lane_invalido");
   assert.equal(leerMensajeAgente('{"type":"key","lane":1,"down":"si"}').error, "down_debe_ser_booleano");
   assert.equal(leerMensajeAgente("no json").error, "json_invalido");

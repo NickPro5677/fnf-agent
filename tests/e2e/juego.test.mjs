@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { chromium } from "playwright";
-import { servirWeb, arrancarRelay, arrancarAgente, preparar, esperarResultado, RAIZ } from "./servidor.mjs";
+import { servirWeb, arrancarRelay, arrancarAgente, conectarIA, preparar, esperarResultado, RAIZ } from "./servidor.mjs";
 
 const require = createRequire(import.meta.url);
 const AXE = fs.readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
@@ -110,9 +110,9 @@ test("IA externa: agente_chart.py juega por WebSocket a través del relay y gana
   const agente = arrancarAgente("agente_chart.py", puerto);
   t.after(() => { agente.kill(); relay.kill(); });
   const page = await nueva({ width: 1280, height: 800 });
-  await page.goto(`${web.url}?nosw&relay=ws://127.0.0.1:${puerto}`);
+  await page.goto(`${web.url}?nosw`);
   await preparar(page, { cancion: "luz-de-neon", dificultad: "easy", jugador: "remoto" });
-  await page.click("#btn-conectar");
+  await conectarIA(page, puerto);
   await page.waitForFunction(() => /agente/.test(document.querySelector("#estado-relay").textContent) && /chart/.test(document.querySelector("#estado-relay").textContent));
   await page.click("#btn-jugar");
   await page.waitForFunction(() => document.querySelector("#panel-ia-piensa").textContent.includes("chart"), null, { timeout: 5000 });

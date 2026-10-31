@@ -15,7 +15,7 @@
 <div class="fondo-animado" aria-hidden="true"><i></i><i></i><i></i></div>
 <a class="saltar" href="#principal">Saltar al contenido</a>
 <header class="barra">
-  <h1><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span> FNF-Agent <small>4.0</small></h1>
+  <h1><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span> FNF-Agent <small>4.1</small></h1>
   <div class="barra-acciones">
     <button id="btn-idioma" class="chip" type="button" lang="en">EN <span class="sr">(English)</span></button>
   </div>
@@ -79,13 +79,56 @@
     </div>
   </div>
   <div id="op-remoto" class="tarjeta oculto">
-    <label for="url-relay" data-i18n="url-relay">Dirección del relay</label>
-    <div class="fila">
-      <input id="url-relay" type="url" value="ws://127.0.0.1:8765" spellcheck="false" autocomplete="off">
+    <h3 class="sub" data-i18n="ia-ajustes">Ajustes de IA externa</h3>
+    <div class="rejilla-ia">
+      <div class="campo"><label for="url-relay" data-i18n="url-relay">Servidor del relay</label>
+        <input id="url-relay" type="text" value="ws://127.0.0.1" spellcheck="false" autocomplete="off" inputmode="url"></div>
+      <div class="campo corto"><label for="puerto-relay" data-i18n="puerto">Puerto</label>
+        <input id="puerto-relay" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="8765" autocomplete="off"></div>
+      <div class="campo ancho"><label for="token-relay" data-i18n="token">Token</label>
+        <div class="fila">
+          <input id="token-relay" type="password" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="xxxx-xxxx-xxxx" aria-describedby="token-ayuda">
+          <label class="mini"><input id="token-ver" type="checkbox"> <span data-i18n="ver">Ver</span></label>
+        </div>
+        <small id="token-ayuda" class="ayuda" data-i18n="token-ayuda">Lo muestra <code>python agente/relay.py</code> al arrancar. Sin token no entra nadie.</small></div>
+      <div class="campo"><label for="modo-ia" data-i18n="modo-ia">Protocolo</label>
+        <select id="modo-ia"><option value="v2">v2</option><option value="v1" data-i18n="modo-v1">v1 (antiguo)</option></select></div>
+      <div class="campo"><label for="hz-ia"><span data-i18n="hz">Estados por segundo</span>: <output id="hz-ia-val">30</output></label>
+        <input id="hz-ia" type="range" min="10" max="60" step="5" value="30"></div>
+      <div class="campo"><label for="lookahead-ia"><span data-i18n="lookahead">Notas por adelantado</span>: <output id="lookahead-ia-val">1500 ms</output></label>
+        <input id="lookahead-ia" type="range" min="250" max="4000" step="250" value="1500"></div>
+      <div class="campo"><label for="comp-ia" data-i18n="compensacion">Compensar latencia</label>
+        <select id="comp-ia"><option value="auto" data-i18n="comp-auto">Automática (mide el ping)</option><option value="manual" data-i18n="comp-manual">Manual</option><option value="no" data-i18n="comp-no">No</option></select></div>
+      <div class="campo" id="campo-comp-ms"><label for="comp-ms"><span data-i18n="comp-ms">Compensación manual</span>: <output id="comp-ms-val">0 ms</output></label>
+        <input id="comp-ms" type="range" min="0" max="150" step="5" value="0"></div>
+    </div>
+    <div class="fila botones-ia">
+      <button id="btn-probar" type="button" class="secundario" data-i18n="probar">Probar conexión</button>
       <button id="btn-conectar" type="button" class="secundario" data-i18n="conectar">Conectar</button>
     </div>
     <p id="aviso-https" class="ayuda aviso oculto" data-i18n="aviso-https">Estás en la demo web (https). El navegador no deja que esta página se conecte a <code>ws://127.0.0.1</code>. Para jugar con una IA, abre el juego en local: <code>python -m http.server 8000 -d web</code> y entra a <code>http://127.0.0.1:8000</code>.</p>
-    <p id="estado-relay" class="ayuda" role="status" data-i18n="relay-ayuda">En Termux: <code>python agente/relay.py</code> y luego <code>python agente/agente_chart.py</code>.</p>
+    <p id="estado-relay" class="ayuda" role="status">En Termux: <code>python agente/relay.py</code> y luego <code>python agente/agente_chart.py</code>.</p>
+    <details class="perfiles-ia">
+      <summary data-i18n="perfiles-ia">Perfiles guardados</summary>
+      <div class="fila">
+        <label for="perfil-ia" class="sr" data-i18n="perfil-ia">Perfil</label>
+        <select id="perfil-ia"><option value="" data-i18n="perfil-ia-ninguno">— elige un perfil —</option></select>
+        <button id="btn-perfil-borrar" type="button" class="secundario" data-i18n="borrar">Borrar</button>
+      </div>
+      <div class="fila">
+        <label for="perfil-ia-nombre" class="sr" data-i18n="perfil-ia-nombre">Nombre del perfil</label>
+        <input id="perfil-ia-nombre" type="text" maxlength="30" placeholder="Mi IA en Termux" autocomplete="off">
+        <button id="btn-perfil-guardar" type="button" class="secundario" data-i18n="guardar">Guardar</button>
+      </div>
+      <div class="fila">
+        <button id="btn-perfil-exportar" type="button" class="secundario" data-i18n="exportar">Exportar</button>
+        <label class="boton secundario" for="perfil-ia-importar"><span data-i18n="importar">Importar</span></label>
+        <input id="perfil-ia-importar" class="sr" type="file" accept="application/json,.json">
+      </div>
+      <small class="ayuda" data-i18n="perfiles-ayuda">Los perfiles se guardan en este dispositivo. Al exportar, el token no se incluye.</small>
+    </details>
+    <h3 class="sub" id="ia-log-t" data-i18n="ia-log">Registro</h3>
+    <div class="log-ia" role="log" aria-labelledby="ia-log-t" tabindex="0"><ol id="ia-log"></ol></div>
   </div>
 
   <h2 data-i18n="ajustes">3. Ajustes</h2>

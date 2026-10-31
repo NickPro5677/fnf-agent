@@ -65,17 +65,18 @@ class ClienteWS:
         msg = ws.recibir(timeout=0.01)   # dict o None
     """
 
-    def __init__(self, url, timeout=5):
+    def __init__(self, url, timeout=5, cabeceras=None):
         u = urlparse(url)
         if u.scheme != "ws":
             raise ValueError("solo ws:// (sin TLS)")
         self.sock = socket.create_connection((u.hostname, u.port or 80), timeout=timeout)
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         clave = base64.b64encode(os.urandom(16)).decode()
-        ruta = u.path or "/"
+        ruta = (u.path or "/") + (f"?{u.query}" if u.query else "")
         pedido = (
             f"GET {ruta} HTTP/1.1\r\nHost: {u.hostname}:{u.port or 80}\r\nUpgrade: websocket\r\n"
-            f"Connection: Upgrade\r\nSec-WebSocket-Key: {clave}\r\nSec-WebSocket-Version: 13\r\n\r\n"
+            f"Connection: Upgrade\r\nSec-WebSocket-Key: {clave}\r\nSec-WebSocket-Version: 13\r\n"
+            + "".join(f"{k}: {v}\r\n" for k, v in (cabeceras or {}).items()) + "\r\n"
         )
         self.sock.sendall(pedido.encode())
         cab = b""
@@ -86,7 +87,8 @@ class ClienteWS:
             cab += trozo
         cabecera, self.buf = cab.split(b"\r\n\r\n", 1)
         if b" 101 " not in cabecera.split(b"\r\n")[0] or clave_aceptar(clave).encode() not in cabecera:
-            raise ConnectionError("el servidor no aceptó WebSocket")
+            linea = cabecera.split(b"\r\n")[0].decode(errors="replace")
+            raise ConnectionError(f"el servidor no aceptó WebSocket ({linea})")
         self.sock.settimeout(None)
         self.abierto = True
 
