@@ -12,3 +12,7 @@ web/__pycache__/
 # editor
 .vscode/
 .idea/
+# python / pruebas
+.venv/
+.pytest_cache/
+test-results/
