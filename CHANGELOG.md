@@ -1,6 +1,6 @@
 # Cambios
 
-## 4.1.0 — sin publicar
+## 4.1.0 — 2026-10-31
 
 ### Nuevo
 - **Bot con 7 perfiles:** Perfecto, Pro, Bueno, Novato, Nervioso, Cansado y Personalizado. Error realista: colas largas,

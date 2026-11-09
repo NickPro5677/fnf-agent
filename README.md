@@ -1,6 +1,6 @@
-# FNF-Agent 4.0
+# FNF-Agent 4.1
 
-Un juego de ritmo para el navegador, al estilo de Friday Night Funkin', **hecho para que una IA pueda jugarlo**.
+Un juego de ritmo para el navegador, al estilo de Friday Night Funkin': **juegas tú, un bot o una IA externa**.
 Funciona en el teléfono (flechas táctiles) y en la PC (teclado). No necesita instalar nada para jugar.
 
 > Idea original de **@NickPro5677**: un entorno donde agentes de IA aprenden y compiten tocando flechas al ritmo.
@@ -10,7 +10,7 @@ Funciona en el teléfono (flechas táctiles) y en la PC (teclado). No necesita i
 
 ![Bot con el panel de IA en la PC](docs/img/bot-panel-ia.png)
 
-**▶ Juega ahora: https://nickpro5677.github.io/fnf-agent/** (funciona en el teléfono y sin internet después de abrirla una vez)
+**▶ Juega ahora: https://nickpro5677.github.io/fnf-agent/** (funciona en el teléfono y sin internet después de abrirla una vez) · [Release v4.1.0](https://github.com/NickPro5677/fnf-agent/releases/tag/v4.1.0)
 
 [English version](README.en.md)
 
