@@ -1,12 +1,12 @@
-# FNF-Agent 4.0
+# FNF-Agent 4.1
 
-A browser rhythm game in the style of Friday Night Funkin', **built so an AI can play it**.
+A browser rhythm game in the style of Friday Night Funkin': **you, a bot, or an external AI can play**.
 Works on phones (touch arrows) and desktop (keyboard). Nothing to install to play.
 
 > Original idea by **@NickPro5677**: an environment where AI agents learn and compete by hitting arrows on beat.
 > Version 4 rebuilds everything in the browser; the idea is the same. The old Python engine lives in [`legacy/`](legacy/).
 
-**▶ Play now: https://nickpro5677.github.io/fnf-agent/** (works on phones, and offline after the first visit)
+**▶ Play now: https://nickpro5677.github.io/fnf-agent/** (works on phones, and offline after the first visit) · [Release v4.1.0](https://github.com/NickPro5677/fnf-agent/releases/tag/v4.1.0)
 
 [Versión en español](README.md)
 
