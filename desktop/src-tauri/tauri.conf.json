@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "FNF-Agent",
+  "version": "4.1.0",
+  "identifier": "dev.fnfagent.desktop",
+  "build": {
+    "frontendDist": "../../web"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "FNF-Agent",
+        "width": 1120,
+        "height": 820,
+        "minWidth": 720,
+        "minHeight": 520,
+        "resizable": true,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../../web": "web/",
+      "../../agente": "agente/"
+    },
+    "shortDescription": "FNF-Agent desktop capsule",
+    "longDescription": "Serves the FNF-Agent web game on localhost and starts the local WebSocket relay with a wired token."
+  }
+}
