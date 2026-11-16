@@ -5,6 +5,8 @@ node_modules/
 **/logs/
 **/env/run/
 **/env/render/
+runs/
+!runs/.gitignore
 web/__pycache__/
 **/__pycache__/
 *.pyc

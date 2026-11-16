@@ -89,6 +89,13 @@ npx playwright install chromium   # solo para las pruebas e2e (en PC)
 Estructura: `web/` (juego, sin compilar, módulos ES), `agente/` (relay y agentes en Python, solo librería estándar),
 `mcp/` (servidor MCP para que un asistente juegue), `tests/`, `tools/generar_canciones.mjs`, `legacy/` (versión 3).
 
+**Banco de pruebas de agentes** (bots + IAs, métricas/trazas, sin UI): [tools/bench/README.md](tools/bench/README.md).
+
+```sh
+node tools/bench/cli.mjs sim --perfil perfecto --cancion luz-de-neon --dificultad hard --runs 1
+node tools/bench/cli.mjs protocol --agent autoajuste --retraso 80 --runs 3 --min-sick 0.95
+```
+
 Cambios y cómo pasar de la v3: [CHANGELOG.md](CHANGELOG.md).
 
 ## Licencia

@@ -1,0 +1,6 @@
+{
+  "autoajuste": { "script": "agente/agente_autoajuste.py", "v": 2 },
+  "observe": { "script": "agente/agente_observe.py", "v": 2 },
+  "chart": { "script": "agente/agente_chart.py", "v": 1 },
+  "js": { "script": "agente/agente.mjs", "v": 2 }
+}
