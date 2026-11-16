@@ -11,6 +11,8 @@ App de un clic que **sirve `web/`** en `http://127.0.0.1:<puerto>` y arranca el 
 3. Abre el WebView en `http://127.0.0.1:…/?fnf_token=…&fnf_port=…&fnf_host=ws://127.0.0.1&jugador=remoto`.
 4. Al cerrar la ventana, mata el relay y libera puertos.
 
+El HTTP local (y `tauri.conf.json`) envían una CSP estricta: solo recursos propios, y `http`/`ws` hacia `127.0.0.1` o `localhost` para el relay. No usa `unsafe-inline` (no hay `<script>` ni `<style>` en línea; `element.style` y `AudioContext` siguen valiendo). `frame-src` admite `blob:` solo para exportar perfiles.
+
 Agentes externos (`python agente/agente_autoajuste.py`, MCP, etc.) siguen funcionando: leen `~/.fnf-agent/token` o `FNF_TOKEN`.
 
 **No sustituye Termux / el flujo móvil.** En el teléfono sigue valiendo `python -m http.server` + relay a mano. Esta cápsula es PC/escritorio (Windows / macOS / Linux).

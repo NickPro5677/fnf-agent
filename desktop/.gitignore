@@ -3,3 +3,6 @@ node_modules/
 # Iconos móviles generados por `cargo tauri icon` (la cápsula es solo escritorio)
 src-tauri/icons/android/
 src-tauri/icons/ios/
+# Esquemas ACL que `tauri-build` reescribe al compilar (autocompletado del IDE).
+# No hacen falta para compilar: `cargo check` los vuelve a crear.
+src-tauri/gen/

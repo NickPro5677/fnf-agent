@@ -844,8 +844,6 @@ version = "4.1.0"
 dependencies = [
  "mime_guess",
  "rand",
- "serde",
- "serde_json",
  "tauri",
  "tauri-build",
  "tiny_http",
