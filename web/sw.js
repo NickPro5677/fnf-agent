@@ -1,5 +1,5 @@
 // Guarda todo para que el juego funcione sin internet.
-const CACHE = "fnf-agent-v4.1.0-4"; // cambia el sufijo para que los teléfonos reciban los cambios
+const CACHE = "fnf-agent-v4.1.0-5"; // cambia el sufijo para que los teléfonos reciban los cambios
 const ARCHIVOS = [
   "./", "index.html", "estilos.css", "app.js", "i18n.js", "manifest.webmanifest", "icono.svg",
   "motor/constantes.js", "motor/chart.js", "motor/juego.js", "motor/protocolo.js",
