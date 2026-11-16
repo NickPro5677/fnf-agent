@@ -77,6 +77,17 @@ Formatos de chart: [docs/charts.md](docs/charts.md).
 Ventanas de tiempo (iguales que en la versión 3): **Sick ≤ 45 ms, Good ≤ 90, Bad ≤ 135, Miss > 135** (hasta 180).
 Tocar sin nota no castiga. Si la vida llega a 0, pierdes.
 
+## Cápsula de escritorio (PC)
+
+Si quieres **un clic** (juego local + relay con token ya cableado), hay una app Tauri 2 en [`desktop/`](desktop/):
+
+```sh
+cd desktop/src-tauri
+cargo tauri dev     # desarrollo (hace falta Rust, Tauri CLI 2 y Python 3)
+```
+
+No sustituye Termux ni el flujo del teléfono: ahí sigue valiendo `python -m http.server` + relay a mano. Detalles, build y smoke: [desktop/README.md](desktop/README.md).
+
 ## Para programadores
 
 ```sh
@@ -87,7 +98,7 @@ npx playwright install chromium   # solo para las pruebas e2e (en PC)
 ```
 
 Estructura: `web/` (juego, sin compilar, módulos ES), `agente/` (relay y agentes en Python, solo librería estándar),
-`mcp/` (servidor MCP para que un asistente juegue), `tests/`, `tools/generar_canciones.mjs`, `legacy/` (versión 3).
+`desktop/` (cápsula Tauri 2), `mcp/` (servidor MCP para que un asistente juegue), `tests/`, `tools/generar_canciones.mjs`, `legacy/` (versión 3).
 
 **Banco de pruebas de agentes** (bots + IAs, métricas/trazas, sin UI): [tools/bench/README.md](tools/bench/README.md).
 

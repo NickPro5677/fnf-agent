@@ -62,6 +62,21 @@ export function pintarValores() {
 export function guardarActual() { escribir(CLAVE_ACTUAL, leerCampos()); }
 export function cargarActual() { ponerCampos(leer(CLAVE_ACTUAL, {})); }
 
+/**
+ * Lee query params de la cápsula de escritorio (o atajos manuales).
+ * Acepta `fnf_token`, `fnf_port`, `fnf_host` y el legado `relay` (URL ws://).
+ * Devuelve un objeto parcial para `ponerCampos`, o null si no hay nada.
+ */
+export function camposDesdeQuery(buscar) {
+  const q = buscar instanceof URLSearchParams ? buscar : new URLSearchParams(buscar || "");
+  const out = {};
+  if (q.get("relay")) Object.assign(out, partirUrl(q.get("relay")));
+  if (q.get("fnf_token")) out.token = q.get("fnf_token");
+  if (q.get("fnf_port")) out.puerto = String(q.get("fnf_port")).replace(/\D/g, "").slice(0, 5);
+  if (q.get("fnf_host")) out.host = q.get("fnf_host");
+  return Object.keys(out).length ? out : null;
+}
+
 // ---------- perfiles ----------
 export const perfiles = () => leer(CLAVE_PERFILES, {});
 

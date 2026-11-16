@@ -54,6 +54,17 @@ and [docs/crear-tu-agente.md](docs/crear-tu-agente.md) (Spanish, with JSON examp
 
 Timing windows (same as v3): **Sick ≤ 45 ms, Good ≤ 90, Bad ≤ 135, Miss** up to 180. Ghost tapping is not punished.
 
+## Desktop capsule (PC)
+
+For a **one-click** local game + relay (token already wired), there is a Tauri 2 app under [`desktop/`](desktop/):
+
+```sh
+cd desktop/src-tauri
+cargo tauri dev     # needs Rust, Tauri CLI 2, and system Python 3
+```
+
+This does **not** replace Termux / the phone flow (`python -m http.server` + relay by hand). Build and smoke: [desktop/README.md](desktop/README.md).
+
 ## Development
 
 ```sh

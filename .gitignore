@@ -18,3 +18,7 @@ web/__pycache__/
 .venv/
 .pytest_cache/
 test-results/
+
+# cápsula Tauri (desktop/)
+desktop/src-tauri/target/
+desktop/node_modules/

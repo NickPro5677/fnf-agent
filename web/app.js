@@ -116,7 +116,12 @@ function aplicarAjustes() {
   ia.cargarActual();
   ia.pintarPerfiles();
   const q = new URLSearchParams(location.search);
-  if (q.get("relay")) ia.ponerCampos(ia.partirUrl(q.get("relay")));
+  // Cápsula de escritorio (y atajos manuales): cablea token/puerto/host sin pegar a mano.
+  const desdeCapsula = ia.camposDesdeQuery(q);
+  if (desdeCapsula) {
+    ia.ponerCampos(desdeCapsula);
+    ia.guardarActual();
+  }
   if (q.get("jugador")) { const r = document.querySelector(`input[name=jugador][value=${q.get("jugador")}]`); if (r) r.checked = true; }
   actualizarOpciones();
 }
