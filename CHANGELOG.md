@@ -4,6 +4,7 @@
 
 ### Nuevo
 - **Cápsula Tauri 2** en `desktop/`: sirve `web/` en `http://127.0.0.1`, arranca `agente/relay.py` con token/puerto y abre el WebView con ajustes de IA cableados (`fnf_token` / `fnf_port` / `fnf_host`). Python del sistema para el relay. Ver `desktop/README.md`.
+- **Cápsula:** CSP estricta (WebView y HTTP local: solo origen propio y `127.0.0.1`/`localhost`), esquemas Tauri generados fuera del repo, `serde` directo quitado, y job de CI (`cargo check`, `cargo test`, smoke) solo si cambia `desktop/**`.
 - Query params de cápsula leídos en `web/` (`camposDesdeQuery`); el flujo clásico con `python -m http.server` no cambia.
 - **Banco de pruebas de agentes** (`tools/bench/`): CLI `sim` (bots vía `simular()`), `protocol` (relay + agente + Playwright),
   métricas/`summary.json`, `--trace` JSONL, `compare`/`replay`, umbral opcional `--min-sick`. Docs: `tools/bench/README.md`.

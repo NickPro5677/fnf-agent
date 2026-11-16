@@ -16,6 +16,25 @@ use rand::Rng;
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 use tiny_http::{Header, Response, Server, StatusCode};
 
+/// CSP del juego. El mismo texto va en `app.security.csp` de `tauri.conf.json`.
+///
+/// El WebView acaba en `http://127.0.0.1:<puerto>/` (otro puerto que el relay), así que
+/// `'self'` no cubre el WebSocket: hay que nombrar `ws://127.0.0.1:*` y `ws://localhost:*`.
+/// `http://127.0.0.1:*` / `http://localhost:*` es el servidor local en cualquier puerto.
+///
+/// No hay `'unsafe-inline'` ni `'unsafe-eval'`. `web/index.html` solo enlaza `app.js` y
+/// `estilos.css`. Los colores y el alto táctil se ponen con `element.style` (CSSOM), que
+/// el navegador no trata como estilo en línea. `AudioContext` no pide URLs: el audio propio
+/// entra por `decodeAudioData`. El service worker es `sw.js` del mismo origen (`worker-src`).
+/// Exportar perfiles hace `<a download href="blob:…">`; `frame-src 'self' blob:` lo permite
+/// sin abrir `blob:` en `script-src` ni en `worker-src`.
+const CSP_JUEGO: &str = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*; worker-src 'self'; frame-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'";
+
+fn cabecera(nombre: &[u8], valor: &[u8]) -> Result<Header, String> {
+    Header::from_bytes(nombre, valor)
+        .map_err(|_| format!("cabecera {}", String::from_utf8_lossy(nombre)))
+}
+
 /// Estado vivo de la cápsula (HTTP + relay). Se mata al cerrar la app.
 struct Capsule {
     http_port: u16,
@@ -167,10 +186,8 @@ fn responder(web_root: &Path, request: tiny_http::Request) -> Result<(), String>
         _ => {
             let resp = Response::from_string("404")
                 .with_status_code(StatusCode(404))
-                .with_header(
-                    Header::from_bytes(&b"Content-Type"[..], &b"text/plain; charset=utf-8"[..])
-                        .map_err(|_| "header".to_string())?,
-                );
+                .with_header(cabecera(b"Content-Type", b"text/plain; charset=utf-8")?)
+                .with_header(cabecera(b"Content-Security-Policy", CSP_JUEGO.as_bytes())?);
             request.respond(resp).map_err(|e| e.to_string())?;
             return Ok(());
         }
@@ -180,14 +197,9 @@ fn responder(web_root: &Path, request: tiny_http::Request) -> Result<(), String>
         .first_or_octet_stream()
         .to_string();
     let resp = Response::from_data(data)
-        .with_header(
-            Header::from_bytes(&b"Content-Type"[..], mime.as_bytes())
-                .map_err(|_| "header".to_string())?,
-        )
-        .with_header(
-            Header::from_bytes(&b"Cache-Control"[..], &b"no-cache"[..])
-                .map_err(|_| "header".to_string())?,
-        );
+        .with_header(cabecera(b"Content-Type", mime.as_bytes())?)
+        .with_header(cabecera(b"Cache-Control", b"no-cache")?)
+        .with_header(cabecera(b"Content-Security-Policy", CSP_JUEGO.as_bytes())?);
     request.respond(resp).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -370,32 +382,47 @@ pub fn run() {
 }
 
 fn smoke_check(http_port: u16, ws_port: u16) -> bool {
-    let ok_game = http_get_contains("127.0.0.1", http_port, "/", b"<!DOCTYPE html")
-        || http_get_contains("127.0.0.1", http_port, "/", b"<html");
+    let pagina = http_get("127.0.0.1", http_port, "/");
+    let ok_game = pagina.as_deref().is_some_and(|b| {
+        contiene(b, b"<!DOCTYPE html") || contiene(b, b"<html") || contiene(b, b"<!doctype html")
+    });
+    let ok_csp = pagina.as_deref().is_some_and(|b| {
+        contiene(b, b"Content-Security-Policy:") && contiene(b, CSP_JUEGO.as_bytes())
+    });
     // json.dumps por defecto pone espacios: "relay": "fnf-agent"
     let ok_relay = http_get_contains("127.0.0.1", ws_port, "/", b"fnf-agent");
     if !ok_game {
         eprintln!("[capsula] smoke: el juego no respondió en :{http_port}");
     }
+    if !ok_csp {
+        eprintln!("[capsula] smoke: falta la CSP en :{http_port}");
+    }
     if !ok_relay {
         eprintln!("[capsula] smoke: el relay no respondió salud en :{ws_port}");
     }
-    ok_game && ok_relay
+    ok_game && ok_csp && ok_relay
+}
+
+fn contiene(buf: &[u8], needle: &[u8]) -> bool {
+    !needle.is_empty() && buf.windows(needle.len()).any(|w| w == needle)
+}
+
+fn http_get(host: &str, port: u16, path: &str) -> Option<Vec<u8>> {
+    let mut stream = TcpStream::connect((host, port)).ok()?;
+    stream.set_read_timeout(Some(Duration::from_secs(3))).ok()?;
+    let req = format!("GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nConnection: close\r\n\r\n");
+    stream.write_all(req.as_bytes()).ok()?;
+    let mut buf = Vec::new();
+    let _ = stream.read_to_end(&mut buf);
+    if buf.is_empty() {
+        None
+    } else {
+        Some(buf)
+    }
 }
 
 fn http_get_contains(host: &str, port: u16, path: &str, needle: &[u8]) -> bool {
-    let mut stream = match TcpStream::connect((host, port)) {
-        Ok(s) => s,
-        Err(_) => return false,
-    };
-    let _ = stream.set_read_timeout(Some(Duration::from_secs(3)));
-    let req = format!("GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nConnection: close\r\n\r\n");
-    if stream.write_all(req.as_bytes()).is_err() {
-        return false;
-    }
-    let mut buf = Vec::new();
-    let _ = stream.read_to_end(&mut buf);
-    buf.windows(needle.len()).any(|w| w == needle)
+    http_get(host, port, path).is_some_and(|buf| contiene(&buf, needle))
 }
 
 #[cfg(test)]
@@ -422,5 +449,24 @@ mod tests {
         assert!(u.contains("fnf_port=8765"));
         assert!(u.contains("jugador=remoto"));
         assert!(u.starts_with("http://127.0.0.1:8000/"));
+    }
+
+    #[test]
+    fn csp_es_la_de_tauri_conf_y_no_abre_inline() {
+        let conf = include_str!("../tauri.conf.json");
+        assert!(
+            conf.contains(&format!("\"csp\": \"{CSP_JUEGO}\"")),
+            "app.security.csp debe ser exactamente CSP_JUEGO"
+        );
+        assert!(!CSP_JUEGO.contains("unsafe-inline"));
+        assert!(!CSP_JUEGO.contains("unsafe-eval"));
+        assert!(CSP_JUEGO.contains("script-src 'self'"));
+        assert!(CSP_JUEGO.contains("style-src 'self'"));
+        assert!(CSP_JUEGO.contains("http://127.0.0.1:*"));
+        assert!(CSP_JUEGO.contains("http://localhost:*"));
+        assert!(CSP_JUEGO.contains("ws://127.0.0.1:*"));
+        assert!(CSP_JUEGO.contains("ws://localhost:*"));
+        assert!(CSP_JUEGO.contains("worker-src 'self'"));
+        assert!(CSP_JUEGO.contains("frame-src 'self' blob:"));
     }
 }

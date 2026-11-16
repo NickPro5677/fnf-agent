@@ -34,3 +34,89 @@ jobs:
           name: test-results
           path: test-results/
           if-no-files-found: ignore
+
+  # No alarga el job `check` del juego: corre en paralelo y se salta si no
+  # cambió desktop/ ni este workflow.
+  desktop:
+    name: Cápsula Tauri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ¿Cambió desktop/ o este workflow?
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -eu
+          run_job=true
+          if [ "$EVENT_NAME" != "pull_request" ] && [ "$EVENT_NAME" != "push" ]; then
+            echo "Evento $EVENT_NAME: se ejecuta la cápsula."
+          elif [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "Sin commit base comparable: se ejecuta la cápsula."
+          elif ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null && ! git fetch --no-tags origin "$BASE_SHA"; then
+            echo "No pude obtener $BASE_SHA: se ejecuta la cápsula."
+          elif ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            echo "Sigue sin estar $BASE_SHA: se ejecuta la cápsula."
+          elif git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -Eq '^(desktop/|\.github/workflows/ci\.yml$)'; then
+            echo "Hay cambios en la cápsula o en el workflow."
+          else
+            echo "Sin cambios en desktop/ ni en el workflow: se omite."
+            run_job=false
+          fi
+          echo "run=$run_job" >> "$GITHUB_OUTPUT"
+
+      - name: Dependencias de sistema (Tauri 2)
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            pkg-config \
+            xvfb \
+            python3
+
+      - name: Rust estable
+        if: steps.scope.outputs.run == 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Caché de cargo
+        if: steps.scope.outputs.run == 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: cargo check
+        if: steps.scope.outputs.run == 'true'
+        working-directory: desktop/src-tauri
+        run: cargo check --locked
+
+      - name: cargo test
+        if: steps.scope.outputs.run == 'true'
+        working-directory: desktop/src-tauri
+        run: cargo test --locked
+
+      - name: Smoke headless (FNF_CAPSULE_SMOKE)
+        if: steps.scope.outputs.run == 'true'
+        working-directory: desktop/src-tauri
+        timeout-minutes: 30
+        env:
+          # WebKitGTK 2.52 se cuelga en xvfb si usa el renderer DMA-BUF.
+          WEBKIT_DISABLE_COMPOSITING_MODE: "1"
+          WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+        run: |
+          cargo build --locked
+          timeout 120 xvfb-run -a env FNF_CAPSULE_SMOKE=1 cargo run --offline --locked
