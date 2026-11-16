@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d0a1f">
-<meta name="description" content="Juego de ritmo estilo Friday Night Funkin' para jugar a mano o conectar una IA. Funciona sin internet.">
-<title>FNF-Agent · juego de ritmo para personas e IAs</title>
+<meta name="description" content="Entorno de ritmo donde personas, bots e IAs aprenden y compiten tocando flechas al tempo. Conecta tu agente por WebSocket.">
+<title>FNF-Agent · donde las IAs aprenden el ritmo</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icono.svg" type="image/svg+xml">
 <link rel="preload" href="fuentes/fredoka.woff2" as="font" type="font/woff2" crossorigin>
@@ -15,7 +15,11 @@
 <div class="fondo-animado" aria-hidden="true"><i></i><i></i><i></i></div>
 <a class="saltar" href="#principal">Saltar al contenido</a>
 <header class="barra">
-  <h1><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span> FNF-Agent <small>4.1</small></h1>
+  <a class="barra-marca" href="#principal">
+    <span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    <span class="barra-nombre">FNF-Agent</span>
+    <small>4.1</small>
+  </a>
   <div class="barra-acciones">
     <button id="btn-idioma" class="chip" type="button" lang="en">EN <span class="sr">(English)</span></button>
   </div>
@@ -23,10 +27,27 @@
 
 <main id="principal">
 <!-- MENÚ -->
-<section id="menu" class="pantalla" aria-labelledby="t-menu">
-  <div class="heroe">
-    <p class="heroe-sub" data-i18n="heroe">Ritmo para personas e IAs · funciona sin internet</p>
+<section id="menu" class="pantalla">
+  <div class="heroe" aria-labelledby="heroe-marca heroe-titulo">
+    <div class="heroe-plano" aria-hidden="true">
+      <div class="heroe-carriles">
+        <span class="heroe-carril c0"><i></i><i></i><i></i></span>
+        <span class="heroe-carril c1"><i></i><i></i><i></i></span>
+        <span class="heroe-carril c2"><i></i><i></i><i></i></span>
+        <span class="heroe-carril c3"><i></i><i></i><i></i></span>
+      </div>
+      <div class="heroe-destello"></div>
+      <div class="heroe-velo"></div>
+    </div>
+    <div class="heroe-copy">
+      <h1 id="heroe-marca" class="heroe-marca"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span> FNF-Agent</h1>
+      <p id="heroe-titulo" class="heroe-titulo" data-i18n="heroe-titulo">Donde las IAs aprenden el ritmo</p>
+      <p class="heroe-sub" data-i18n="heroe-sub">Tú, un bot o tu propia IA externa: mismas flechas, mismo tempo, mismo juicio.</p>
+      <a class="heroe-cta" href="#t-menu" data-i18n="heroe-cta">Empezar</a>
+    </div>
   </div>
+
+  <div class="menu-cuerpo">
   <h2 id="t-menu" data-i18n="elige">1. Elige una canción</h2>
   <div id="canciones" class="canciones" role="radiogroup" aria-labelledby="t-menu"></div>
 
@@ -42,9 +63,9 @@
   <fieldset class="jugadores">
     <legend class="sr" data-i18n="quien">¿Quién juega?</legend>
     <label class="opcion"><input type="radio" name="jugador" value="humano" checked><span class="icono" aria-hidden="true">✋</span><span><b data-i18n="j-humano">Tú</b><small data-i18n="j-humano-d">Flechas táctiles o teclado (← ↓ ↑ → o WASD)</small></span></label>
-    <label class="opcion"><input type="radio" name="jugador" value="perfecto"><span class="icono" aria-hidden="true">★</span><span><b data-i18n="j-perfecto">Bot perfecto</b><small data-i18n="j-perfecto-d">Nunca falla. Para ver cómo debería sonar.</small></span></label>
+    <label class="opcion opcion-ia"><input type="radio" name="jugador" value="remoto"><span class="icono" aria-hidden="true">⇄</span><span><b data-i18n="j-remoto">IA externa</b><small data-i18n="j-remoto-d">Tu agente (Python, JS, LLM…) se conecta por WebSocket y compite en el mismo chart.</small></span></label>
     <label class="opcion"><input type="radio" name="jugador" value="humanizado"><span class="icono" aria-hidden="true">≈</span><span><b data-i18n="j-humanizado">Bot con perfil</b><small data-i18n="j-humanizado-d">Pro, novato, nervioso, cansado… falla como una persona.</small></span></label>
-    <label class="opcion"><input type="radio" name="jugador" value="remoto"><span class="icono" aria-hidden="true">⇄</span><span><b data-i18n="j-remoto">IA externa</b><small data-i18n="j-remoto-d">Un programa (Python, LLM…) se conecta por WebSocket.</small></span></label>
+    <label class="opcion"><input type="radio" name="jugador" value="perfecto"><span class="icono" aria-hidden="true">★</span><span><b data-i18n="j-perfecto">Bot perfecto</b><small data-i18n="j-perfecto-d">Nunca falla. Para ver cómo debería sonar.</small></span></label>
   </fieldset>
   <div id="op-humanizado" class="tarjeta oculto">
     <div class="fila">
@@ -159,7 +180,8 @@
   </details>
 
   <button id="btn-jugar" class="jugar" type="button" data-i18n="jugar">▶ Jugar</button>
-  <p class="pie" data-i18n="pie">Proyecto libre (MIT). Inspirado en Friday Night Funkin'; no incluye música, charts ni dibujos oficiales.</p>
+  <p class="pie" data-i18n="pie">Proyecto libre (MIT). Funciona sin internet tras la primera visita. Inspirado en Friday Night Funkin'; no incluye música, charts ni dibujos oficiales.</p>
+  </div>
 </section>
 
 <!-- JUEGO -->

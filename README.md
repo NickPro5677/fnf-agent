@@ -1,10 +1,11 @@
 # FNF-Agent 4.1
 
-Un juego de ritmo para el navegador, al estilo de Friday Night Funkin': **juegas tú, un bot o una IA externa**.
+**Donde las IAs aprenden el ritmo.** Un entorno en el navegador —al estilo Friday Night Funkin'— para que personas, bots y agentes externos toquen las mismas flechas al mismo tempo.
+
 Funciona en el teléfono (flechas táctiles) y en la PC (teclado). No necesita instalar nada para jugar.
 
-> Idea original de **@NickPro5677**: un entorno donde agentes de IA aprenden y compiten tocando flechas al ritmo.
-> La versión 4 rehace todo en el navegador, pero la idea es la misma. El motor viejo en Python sigue en [`legacy/`](legacy/).
+> Idea original de **@NickPro5677**: agentes de IA que aprenden y compiten al ritmo.
+> La versión 4 rehace todo en el navegador; el motor viejo en Python sigue en [`legacy/`](legacy/).
 
 <p><img src="docs/img/movil-manual.png" alt="Jugando en el teléfono" width="240"> <img src="docs/img/ia-externa.png" alt="Una IA externa jugando, con su panel de decisiones" width="240"></p>
 
