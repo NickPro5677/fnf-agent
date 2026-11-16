@@ -62,6 +62,13 @@ npm ci && npx playwright install chromium
 ./check.sh           # everything incl. Playwright e2e
 ```
 
+**Agent test bench** (bots + AIs, metrics/traces, no UI): [tools/bench/README.en.md](tools/bench/README.en.md).
+
+```sh
+node tools/bench/cli.mjs sim --perfil perfecto --cancion luz-de-neon --dificultad hard --runs 1
+node tools/bench/cli.mjs protocol --agent autoajuste --retraso 80 --runs 3 --min-sick 0.95
+```
+
 See [CHANGELOG.md](CHANGELOG.md) for migration notes from v3.
 
 ## License

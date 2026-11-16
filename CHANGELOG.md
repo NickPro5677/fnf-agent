@@ -1,5 +1,11 @@
 # Cambios
 
+## Unreleased
+
+### Nuevo
+- **Banco de pruebas de agentes** (`tools/bench/`): CLI `sim` (bots vía `simular()`), `protocol` (relay + agente + Playwright),
+  métricas/`summary.json`, `--trace` JSONL, `compare`/`replay`, umbral opcional `--min-sick`. Docs: `tools/bench/README.md`.
+
 ## 4.1.0 — 2026-10-31
 
 ### Nuevo
