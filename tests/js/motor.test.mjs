@@ -114,3 +114,37 @@ test("precisión y letra", () => {
   assert.equal(letra(1, 0), "S+");
   assert.equal(letra(0.5, 3), "D");
 });
+
+test("cursores: miss y rival en chart denso dan el mismo resultado que el barrido completo", () => {
+  const notas = [];
+  for (let i = 0; i < 400; i++) {
+    notas.push(n(500 + i * 50, i % 4, 0, i % 5 === 0 ? "rival" : "jugador"));
+  }
+  const j = new Juego(chart(notas));
+  // Tocamos perfectas las primeras 40 jugables y dejamos el resto
+  let tocadas = 0;
+  for (const nota of j.jugables) {
+    if (tocadas >= 40) break;
+    j.actualizar(nota.t);
+    assert.equal(j.presionar(nota.lane, nota.t).juicio, "sick");
+    tocadas += 1;
+  }
+  assert.ok(j.iActivo > 0, "el cursor de actualizar avanza");
+  assert.ok(j.iJugable > 0, "el cursor de jugables avanza");
+  j.actualizar(j.fin + 1);
+  assert.equal(j.resultado, "derrota"); // muchas miss
+  assert.equal(j.j.sick, 40);
+  assert.ok(j.j.miss > 100);
+});
+
+test("hold que cruza una nota rival futura se completa al soltar / al fin", () => {
+  const j = new Juego(chart([n(1000, 0, 800), n(1400, 1, 0, "rival"), n(2000, 2)]));
+  j.presionar(0, 1000);
+  assert.equal(j.notas[0].estado, "hold");
+  const rival = j.actualizar(1400);
+  assert.equal(rival[0].tipo, "rival");
+  assert.equal(j.notas[0].estado, "hold");
+  j.actualizar(1800);
+  assert.equal(j.notas[0].estado, "hecha");
+  assert.equal(j.j.miss, 0);
+});

@@ -332,6 +332,7 @@ function bucle() {
     juego.actualizar(t).forEach(partida.manejar);
     if (!juego.resultado) jugador.cuadro(t);
   }
+  musica.tick();
   lienzo.dibujar(juego, t, { velocidad: partida.velocidad, bpm: partida.chart.bpm, color: partida.info.color || "#7c5cff", mostrarIA: jugador.tipo !== "humano", reserva: reservaPanel(),
     soloJugador: partida.modo.soloJugador, downscroll: partida.modo.downscroll, zona: zonaPx(), verZonas,
     menosEfectos: $("#menos-efectos").checked, pulsadas: partida.pulsadas, opacidad: +$("#pad-opacidad").value / 100,

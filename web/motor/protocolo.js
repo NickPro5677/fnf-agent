@@ -23,7 +23,9 @@ export function mensajeEstado(juego, maxNotas = 8, lookahead = null) {
   const t = juego.t;
   const proximas = [];
   const lanes = [null, null, null, null];
-  for (const n of juego.jugables) {
+  const desde = juego.iJugable || 0;
+  for (let i = desde; i < juego.jugables.length; i++) {
+    const n = juego.jugables[i];
     if (n.estado !== "espera") continue;
     const dt = n.t - t;
     if (lanes[n.lane] === null) lanes[n.lane] = Math.round(dt);
@@ -31,7 +33,11 @@ export function mensajeEstado(juego, maxNotas = 8, lookahead = null) {
     if ((proximas.length >= maxNotas || (lookahead != null && dt > lookahead)) && lanes.every((x) => x !== null)) break;
   }
   const holds = [null, null, null, null];
-  for (const n of juego.jugables) if (n.estado === "hold") holds[n.lane] = Math.round(n.finHold - t);
+  for (let i = desde; i < juego.jugables.length; i++) {
+    const n = juego.jugables[i];
+    if (n.estado === "espera" && n.t - t > 5000) break;
+    if (n.estado === "hold") holds[n.lane] = Math.round(n.finHold - t);
+  }
   return {
     type: "state", v: lookahead != null ? 2 : 1, ...(lookahead != null ? { lookahead } : {}), t: Math.round(t), playing: !juego.resultado,
     next: proximas, lanes, holds, keys: [...juego.teclas],

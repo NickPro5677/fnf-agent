@@ -229,8 +229,23 @@ export class Lienzo {
     pintarReceptores(g.rival, g.anchoR, this.rivalOn);
     pintarReceptores(g.jugador, g.ancho, juego.teclas);
 
-    // notas
-    for (const n of juego.notas) {
+    // notas: partimos de iDibujo (las hecha ya no se pintan) y paramos al salir por abajo
+    const notas = juego.notas;
+    let i0 = juego.iDibujo || 0;
+    while (i0 < notas.length) {
+      const n = notas[i0];
+      if (n.estado === "hecha") { i0 += 1; continue; }
+      const xsSkip = n.lado === "jugador" || n.cuenta ? g.jugador : g.rival;
+      const tamSkip = ((xsSkip === g.jugador ? g.ancho : g.anchoR) || g.ancho) * 0.8;
+      const yFinSkip = g.recY + (n.t + n.l - t) * px * dir;
+      // ya salió por arriba del todo (fallo / rival acabado): no volverá
+      if ((n.estado === "fallo" || (n.lado === "rival" && !n.cuenta && n.estado !== "espera"))
+        && (dir > 0 ? yFinSkip < -tamSkip : yFinSkip > H + tamSkip)) { i0 += 1; continue; }
+      break;
+    }
+    if (typeof juego.iDibujo === "number") juego.iDibujo = i0;
+    for (let i = i0; i < notas.length; i++) {
+      const n = notas[i];
       const xs = n.lado === "jugador" || n.cuenta ? g.jugador : g.rival;
       if (!xs) continue;
       if (n.lado === "rival" && !n.cuenta && n.estado !== "espera" && t > n.t + n.l) continue;
