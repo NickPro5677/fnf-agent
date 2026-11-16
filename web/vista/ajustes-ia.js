@@ -3,6 +3,10 @@ const $ = (s) => document.querySelector(s);
 const CLAVE_PERFILES = "fnf-ia-perfiles";
 const CLAVE_ACTUAL = "fnf-ia";
 const MAX_LOG = 60;
+// Hosts de la cápsula (y de python -m http.server en esta máquina).
+const ORIGENES_LOCALES = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+// La URL pública ya rellenó el formulario y el jugador todavía no lo guardó.
+let enlaceSinGuardar = false;
 
 /** Separa "ws://host:puerto" en { host: "ws://host", puerto }. */
 export function partirUrl(texto) {
@@ -59,13 +63,23 @@ export function pintarValores() {
   $("#lookahead-ia").disabled = v1;
 }
 
-export function guardarActual() { escribir(CLAVE_ACTUAL, leerCampos()); }
+/** El jugador guardó el formulario (al escribir o al pulsar guardar). */
+export function guardarActual() {
+  enlaceSinGuardar = false;
+  escribir(CLAVE_ACTUAL, leerCampos());
+}
 export function cargarActual() { ponerCampos(leer(CLAVE_ACTUAL, {})); }
+
+/** true en 127.0.0.1, localhost o ::1. En GitHub Pages es false. */
+export function origenLocal(hostname) {
+  return ORIGENES_LOCALES.has(String(hostname ?? "").trim().toLowerCase());
+}
 
 /**
  * Lee query params de la cápsula de escritorio (o atajos manuales).
  * Acepta `fnf_token`, `fnf_port`, `fnf_host` y el legado `relay` (URL ws://).
  * Devuelve un objeto parcial para `ponerCampos`, o null si no hay nada.
+ * No registra el token.
  */
 export function camposDesdeQuery(buscar) {
   const q = buscar instanceof URLSearchParams ? buscar : new URLSearchParams(buscar || "");
@@ -75,6 +89,38 @@ export function camposDesdeQuery(buscar) {
   if (q.get("fnf_port")) out.puerto = String(q.get("fnf_port")).replace(/\D/g, "").slice(0, 5);
   if (q.get("fnf_host")) out.host = q.get("fnf_host");
   return Object.keys(out).length ? out : null;
+}
+
+/**
+ * Usa relay/fnf_* en esta visita. En un origen público no escribe localStorage:
+ * un enlace no debe dejar un token ajeno guardado. En la cápsula (localhost) sí.
+ * El token no se muestra ni se registra.
+ * @returns {{ aplicado: boolean, persistido: boolean }}
+ */
+export function aplicarDesdeUrl(search, hostname) {
+  const campos = camposDesdeQuery(search);
+  if (!campos) {
+    enlaceSinGuardar = false;
+    return { aplicado: false, persistido: false };
+  }
+  ponerCampos(campos);
+  if (!origenLocal(hostname)) {
+    enlaceSinGuardar = true;
+    return { aplicado: true, persistido: false };
+  }
+  guardarActual();
+  return { aplicado: true, persistido: true };
+}
+
+/**
+ * Conectar o Jugar recuerda el formulario, salvo un enlace público que el
+ * jugador aún no guardó: esos datos valen solo en esta visita.
+ * @returns {boolean} true si escribió localStorage
+ */
+export function guardarAlConectar() {
+  if (enlaceSinGuardar) return false;
+  guardarActual();
+  return true;
 }
 
 // ---------- perfiles ----------

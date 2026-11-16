@@ -116,19 +116,16 @@ function aplicarAjustes() {
   ia.cargarActual();
   ia.pintarPerfiles();
   const q = new URLSearchParams(location.search);
-  // Cápsula de escritorio (y atajos manuales): cablea token/puerto/host sin pegar a mano.
-  const desdeCapsula = ia.camposDesdeQuery(q);
-  if (desdeCapsula) {
-    ia.ponerCampos(desdeCapsula);
-    ia.guardarActual();
-  }
+  // La cápsula sigue entrando con el token ya puesto. En GitHub Pages el enlace
+  // solo vale esta visita: no se guarda hasta que el jugador lo pide.
+  ia.aplicarDesdeUrl(q, location.hostname);
   if (q.get("jugador")) { const r = document.querySelector(`input[name=jugador][value=${q.get("jugador")}]`); if (r) r.checked = true; }
   actualizarOpciones();
 }
 
 function nuevoRemoto() {
   const c = ia.leerCampos();
-  ia.guardarActual();
+  ia.guardarAlConectar();
   if (!c.token) throw new Error(traducir("falta-token"));
   return new JugadorRemoto({ url: ia.unirUrl(c.host, c.puerto), token: c.token, hz: c.hz, lookahead: c.lookahead, modo: c.modo, compensacion: c.compensacion, log: ia.anotar });
 }
@@ -502,8 +499,12 @@ $("#btn-probar").addEventListener("click", probarConexion);
 ["#url-relay", "#puerto-relay", "#token-relay", "#modo-ia", "#hz-ia", "#lookahead-ia", "#comp-ia", "#comp-ms", "#token-ver"].forEach((s) => $(s).addEventListener("input", () => { ia.pintarValores(); ia.guardarActual(); }));
 $("#perfil-ia").addEventListener("change", (e) => { if (ia.usarPerfil(e.target.value)) { ia.guardarActual(); ia.anotar(`${traducir("perfil-usado")}: ${e.target.value}`); } });
 $("#btn-perfil-guardar").addEventListener("click", () => {
-  try { const n = ia.guardarPerfil($("#perfil-ia-nombre").value); ia.anotar(`${traducir("perfil-guardado")}: ${n}`, "ok"); $("#perfil-ia-nombre").value = ""; }
-  catch (e) { ia.anotar(`⚠ ${e.message}`, "error"); }
+  try {
+    const n = ia.guardarPerfil($("#perfil-ia-nombre").value);
+    ia.guardarActual();
+    ia.anotar(`${traducir("perfil-guardado")}: ${n}`, "ok");
+    $("#perfil-ia-nombre").value = "";
+  } catch (e) { ia.anotar(`⚠ ${e.message}`, "error"); }
 });
 $("#btn-perfil-borrar").addEventListener("click", () => { const n = $("#perfil-ia").value; if (n) { ia.borrarPerfil(n); ia.anotar(`${traducir("perfil-borrado")}: ${n}`); } });
 $("#btn-perfil-exportar").addEventListener("click", () => {

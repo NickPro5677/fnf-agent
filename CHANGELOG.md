@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Corregido
+- Un enlace con `?relay=` o `fnf_token` / `fnf_port` / `fnf_host` ya no guarda el relay ni el token en el navegador si la página es pública (GitHub Pages): valen solo en esa visita. Se guardan en `127.0.0.1`/`localhost` (cápsula) o cuando el jugador guarda el formulario. Caché del juego renovada para que el teléfono recargue.
+
 ### Nuevo
 - **Cápsula Tauri 2** en `desktop/`: sirve `web/` en `http://127.0.0.1`, arranca `agente/relay.py` con token/puerto y abre el WebView con ajustes de IA cableados (`fnf_token` / `fnf_port` / `fnf_host`). Python del sistema para el relay. Ver `desktop/README.md`.
 - Query params de cápsula leídos en `web/` (`camposDesdeQuery`); el flujo clásico con `python -m http.server` no cambia.
